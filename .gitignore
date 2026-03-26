@@ -1,0 +1,48 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Data — too large for git
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Environment variables — NEVER commit secrets
+.env
+.env.*
+!.env.example
+
+# ChromaDB
+chroma_db/
+*.chroma
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# pytest
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Build
+dist/
+build/
+*.egg-info/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
