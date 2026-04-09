@@ -1,0 +1,22 @@
+[
+  {
+    "id": "doc1",
+    "title": "Ollama para desarrollo local",
+    "content": "Ollama permite ejecutar modelos de lenguaje localmente para desarrollo y pruebas en software."
+  },
+  {
+    "id": "doc2",
+    "title": "ChromaDB como base vectorial",
+    "content": "ChromaDB permite almacenar vectores y metadatos para sistemas de recuperación de información."
+  },
+  {
+    "id": "doc3",
+    "title": "Latent Semantic Indexing",
+    "content": "LSI usa una matriz término documento y reducción de dimensionalidad para capturar relaciones semánticas latentes."
+  },
+  {
+    "id": "doc4",
+    "title": "Ranking en buscadores",
+    "content": "El ranking ordena documentos según relevancia usando similitud entre consulta y documentos."
+  }
+]
