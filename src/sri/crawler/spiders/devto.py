@@ -9,8 +9,6 @@ API reference: https://developers.forem.com/api/v1
 import time
 import uuid
 
-import httpx
-
 from sri.crawler.base import BaseSpider
 from sri.crawler.items import ArticleItem
 
@@ -33,11 +31,10 @@ class DevToSpider(BaseSpider):
             max_articles: Maximum number of articles to fetch in total.
             per_page: Number of articles to request per API call (max 100).
         """
+        super().__init__()  # Initialise the HTTP client from BaseSpider
 
         self.max_articles = max_articles
         self.per_page = min(per_page, 100)  # Dev.to API max per
-        # Reuse one connection for all requests — faster and more polite
-        self._client = httpx.Client(timeout=10.0)
 
     def fetch_articles(self) -> list[ArticleItem]:
         """Fetch technology articles from the Dev.to API page by page.
@@ -78,32 +75,6 @@ class DevToSpider(BaseSpider):
                 time.sleep(1)
 
         return collected
-
-    def _get_json(
-        self,
-        url: str,
-        params: dict | None = None,
-    ) -> dict | list | None:
-        """Make a GET request and return the parsed JSON response.
-
-        Single point of HTTP communication for this spider. All requests
-        go through here so error handling lives in one place (DRY).
-
-        Args:
-            url: The endpoint URL to request.
-            params: Optional query parameters to append to the URL.
-
-        Returns:
-            Parsed JSON as dict or list, or None on any HTTP error.
-        """
-
-        try:
-            response = self._client.get(url, params=params)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPError as error:
-            print(f"[DevToSpider] HTTP error fetching {url}: {error}")
-            return None
 
     def _fetch_page(self, tag: str, page: int) -> list[dict]:
         """Fetch a single page of articles from the Dev.to API.
