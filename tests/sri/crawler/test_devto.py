@@ -48,9 +48,7 @@ def test_build_item_returns_none():
         "invalid": "data",
         "id": 123,
     }
-    spider._fetch_full = MagicMock(
-        return_value={}
-    )  # Mock full article fetch to return invalid data
+    spider._fetch_full = MagicMock(return_value={})
 
     # Act
     result = spider._build_item(raw_article)
