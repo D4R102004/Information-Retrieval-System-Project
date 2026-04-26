@@ -6,14 +6,13 @@ from Dev.to using their free public API, requiring no authentication.
 API reference: https://developers.forem.com/api/v1
 """
 
-import time
 import uuid
 
-from sri.crawler.base import BaseSpider
+from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
 
 
-class DevToSpider(BaseSpider):
+class DevToSpider(ApiSpider):
     """Fetches technology articles from the Dev.to public API.
 
     Retrieves articles page by page using Dev.to's free REST API,
@@ -31,50 +30,11 @@ class DevToSpider(BaseSpider):
             max_articles: Maximum number of articles to fetch in total.
             per_page: Number of articles to request per API call (max 100).
         """
-        super().__init__()  # Initialise the HTTP client from BaseSpider
+        super().__init__(
+            max_articles=max_articles
+        )  # Initialise the HTTP client from ApiSpider
 
-        self.max_articles = max_articles
         self.per_page = min(per_page, 100)  # Dev.to API max per
-
-    def fetch_articles(self) -> list[ArticleItem]:
-        """Fetch technology articles from the Dev.to API page by page.
-
-        Iterates through API pages, collecting articles until max_articles
-        is reached. Waits one second between requests to respect Dev.to's
-        rate limits.
-
-        Returns:
-            List of ArticleItem instances with all seven fields populated.
-        """
-
-        # These tags cover the technology and software domain broadly
-        tags = ["python", "software", "programming", "webdev", "javascript"]
-
-        collected: list[ArticleItem] = []
-
-        for tag in tags:
-            page = 1
-
-            while len(collected) < self.max_articles:
-                articles = self._fetch_page(tag=tag, page=page)
-
-                # Empty response means no more pages for this tag
-                if not articles:
-                    break
-
-                for raw_article in articles:
-                    if len(collected) >= self.max_articles:
-                        break
-
-                    item = self._build_item(raw_article)
-                    if item is not None:
-                        collected.append(item)
-
-                page += 1
-                # Be polite — avoid hammering Dev.to's servers
-                time.sleep(1)
-
-        return collected
 
     def _fetch_page(self, tag: str, page: int) -> list[dict]:
         """Fetch a single page of articles from the Dev.to API.
@@ -149,3 +109,15 @@ class DevToSpider(BaseSpider):
         article["tags"] = body.get("tag_list", [])
 
         return article
+
+    def _search_terms(self) -> list[str]:
+        """Return Dev.to topic tags for the technology domain.
+
+        Returns:
+            List of topic tags to search for articles.
+        """
+
+        # These tags cover the technology and software domain broadly
+        tags = ["python", "software", "programming", "webdev", "javascript"]
+
+        return tags
