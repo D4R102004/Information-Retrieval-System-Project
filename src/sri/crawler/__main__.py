@@ -11,6 +11,7 @@ import sys
 
 from sri.crawler.pipeline import JsonPipeline
 from sri.crawler.spiders.devto import DevToSpider
+from sri.crawler.spiders.hackernews import HackerNewsSpider
 
 
 def main() -> int:
@@ -31,19 +32,27 @@ def main() -> int:
     # 1. Print that we're starting
     print(f"Starting SRI crawler with max_articles={args.max_articles}...")
     # 2. Create the spider and pipeline
-    spider = DevToSpider(max_articles=args.max_articles)
+    spiders = [
+        DevToSpider(max_articles=args.max_articles),
+        HackerNewsSpider(max_articles=args.max_articles),
+    ]
     pipeline = JsonPipeline(output_directory="data/raw")
     try:
         # 3. Fetch articles
-        collected_articles = spider.fetch_articles()
+        total_saved = 0
+        for spider in spiders:
+            print(f"Running {spider.__class__.__name__}...")
+            articles = spider.fetch_articles()
+            # 4. Save each article
+            for article in articles:
+                pipeline.save_item(article)
+            # 5. Print summary
+            print(f"  Saved {len(articles)} articles.")
+            total_saved += len(articles)
 
-        # 4. Save each article
-        for article in collected_articles:
-            pipeline.save_item(article)
-        # 5. Print summary
-        print(f"Fetched and saved {len(collected_articles)} articles.")
-        # 6. Return 0
+        print(f"Done. Total articles saved: {total_saved}")
         return 0
+
     except Exception as error:
         print(f"[ERROR] Crawler failed: {error}")
         return 1
