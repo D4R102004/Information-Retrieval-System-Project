@@ -1,0 +1,9 @@
+{
+  "id": "6dcdda1e-ceb7-484d-9631-cf0844d810a8",
+  "title": "LuxTorrent – a simple and lightweight torrent client 🟢",
+  "url": "https://dev.to/daexoum/luxtorrent-a-simple-and-lightweight-torrent-client-283b",
+  "date": "2026-04-24T20:40:52Z",
+  "content": "I made a lightweight torrent client with a focus on simplicity and a clean interface.\n\nIt started as a personal tool to replace existing clients that felt too cluttered or heavy, and I kept iterating on it until it became something usable.\n\nIt does not try to add anything new to the BitTorrent protocol, just a more minimal and straightforward way to manage downloads.\n\nCurrent features:\n\n-Clean interface with key information visible\n-Torrent and magnet link support\n-Select individual files inside a torrent\n-Pause and resume downloads\n-Real-time speed graphs\n-Peers and trackers view\n-Portable executable (no installation required)\n\nIt is still in beta, so there are likely bugs and missing features.\n\nIf anyone finds it useful or wants to try it, here it is:\n[github](https://github.com/Daexoum/LuxTorrent)\n\nFeedback would be really appreciated!",
+  "source": "devto",
+  "tags": "showdev, sideprojects, software, tooling"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "71bf00d3-525b-42fc-80fb-c7600f3d24f2",
+  "title": "✅ Milestone Completed: Prometheus Data Format Integration",
+  "url": "https://dev.to/munirfarhan/milestone-completed-prometheus-data-format-integration-12l8",
+  "date": "2026-04-19T07:36:58Z",
+  "content": "# ✅ Milestone Completed: Prometheus Data Format Integration\n\nThis sprint focused on making telemetry output fully Prometheus-compatible while preserving our existing collector pipeline for CPU, memory, and disk I/O.\n\n## What I implemented\n\n- Added Prometheus text exposition format (v0.0.4) output\n- Included `# HELP` and `# TYPE` metadata\n- Supported `gauge` and `counter` metric families\n- Added label-based dimensions (CPU modes, disk devices)\n- Kept output deterministic and scrape-ready for a `/metrics` style endpoint\n\n## Metrics now covered\n\n- CPU usage and per-mode CPU time distribution\n- Virtual memory: used, available, total\n- Swap memory: used, total\n- Disk I/O bytes: read/write (aggregate + per-device)\n- Disk I/O operations: read/write (aggregate + per-device)\n\n## Validation results\n\n- Output verified against Prometheus exposition rules\n- No syntax violations found\n- Metrics are parseable and scrape-ready\n\n## Prior milestone context (OpenMetrics)\n\nBefore this, I shipped OpenMetrics-aligned output for the same core Linux host metrics with:\n\n- `# HELP`, `# TYPE`, `# UNIT` metadata\n- `# EOF` termination\n- Valid CPU, memory, and disk payload output\n\n## Next improvements\n\n- Evaluate ratio-based CPU values (0–1) vs percentage\n- Extend optional unit handling for stronger tooling interoperability\n- Continue OpenMetrics alignment where needed\n\nRepo: https://github.com/ronin1770/heka-insights-agent",
+  "source": "devto",
+  "tags": "python, telemetry, openmetrics, prometheus"
+}

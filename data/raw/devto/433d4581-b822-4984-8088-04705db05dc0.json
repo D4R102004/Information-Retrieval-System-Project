@@ -1,0 +1,9 @@
+{
+  "id": "433d4581-b822-4984-8088-04705db05dc0",
+  "title": "I built a tool to stop metadata loss: IPMD (Image Pixel Metadata)",
+  "url": "https://dev.to/officialkelechi001/i-built-a-tool-to-stop-metadata-loss-ipmd-image-pixel-metadata-1ccd",
+  "date": "2026-04-25T08:43:59Z",
+  "content": "**The problem:** When you send photos through your device to another devices, the original metadata (date, time, etc..) is usually overwritten. [Read more.](https://github.com/777Tu/ipmd-core/blob/main/README.md)\n[Repo on GitHub.](github.com/777Tu/ipmd-core)\n",
+  "source": "devto",
+  "tags": "python, opensource, steganography, database"
+}

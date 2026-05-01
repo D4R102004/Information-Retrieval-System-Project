@@ -1,0 +1,9 @@
+{
+  "id": "248cf418-8f88-4754-99d0-1d2179f558e0",
+  "title": "PromptOS - A desktop AI agent that actually controls your machine — not just a chatbot",
+  "url": "https://dev.to/promptos/a-desktop-ai-agent-that-actually-controls-your-machine-not-just-a-chatbot-38ek",
+  "date": "2026-04-21T15:49:38Z",
+  "content": "**Prompt OS** is an open-source Python desktop app that gives any LLM direct access to your local machine through a real **agentic loop**.\n\n---\n\n### Capabilities\nIt doesn't just answer questions—it takes action. Prompt OS chains tools together until the task is actually done by:\n\n* **System Control:** Runs shell commands and executes Python scripts.\n* **Web & Browser:** Controls your browser and searches the web.\n* **Document Processing:** Reads PDFs, DOCX, and XLSX files.\n* **Vision & Context:** Interprets your screen via vision models and manages your clipboard.\n\n### Real-World Examples\n> **User:** \"What's eating my RAM?\"  \n> **Prompt OS:** Runs the necessary system commands and identifies the processes for you.\n\n> **User:** \"Rename all images in my Downloads by date.\"  \n> **Prompt OS:** Writes the Python script and executes it autonomously.\n\n---\n\n### Supported Providers\nSwitch between your favorite LLMs directly from the GUI:\n* **Anthropic**\n* **Google**\n* **OpenAI**\n* **Groq**\n* **OpenRouter**\n* *And more...*\n\n**Note:** Two providers are **completely free** with no API key required.\n\n---\n\n### Privacy & Open Source\n* **Local First:** Everything runs locally. Your memory, keys, and system prompts are all stored in plain files you can inspect and edit.\n* **Open Source:** Released under the **MIT License**.",
+  "source": "devto",
+  "tags": "ai, python, opensource, productivity"
+}

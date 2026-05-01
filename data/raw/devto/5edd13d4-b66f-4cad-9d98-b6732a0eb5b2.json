@@ -1,0 +1,9 @@
+{
+  "id": "5edd13d4-b66f-4cad-9d98-b6732a0eb5b2",
+  "title": "Why Therapy Notes Feel Harder Than They Actually Are",
+  "url": "https://dev.to/robbieedwards/why-therapy-notes-feel-harder-than-they-actually-are-40oa",
+  "date": "2026-04-28T01:57:18Z",
+  "content": "If you’re building tools for therapists, it’s easy to assume the problem is obvious:\n\nWriting notes takes too long.\n\n⸻\n\nBut after talking to clinicians, a different pattern emerges.\n\nThe issue isn’t the note itself.\n\nIt’s the mental context switch required to write it.\n\n⸻\n\nDuring sessions, therapists operate in a completely different mode:\n\n- listening\n- pattern recognition\n- emotional processing\n\n⸻\n\nDocumentation requires something else:\n\n- structure\n- summarization\n- compliance framing\n\n⸻\n\nSwitching between those modes is cognitively expensive.\n\n⸻\n\nThat’s why you hear this so often:\n\n“Once I start, it’s fine.”\n\n⸻\n\nThe bottleneck isn’t writing.\n\nIt’s starting.\n\n⸻\n\nMost tools try to optimize the output:\n\n- better templates\n- cleaner formatting\n\n⸻\n\nBut the higher-leverage opportunity is reducing the activation energy required to begin.\n\n⸻\n\nThat’s also why a lot of newer approaches to AI in this space focus less on generating perfect notes and more on lowering the barrier to getting something started.\n\n⸻\n\nIf you’re curious how this is evolving in practice:\n👉 [AI for Therapists](https://www.aftersession.ai/ai-for-therapists)\n\n⸻\n\nOnce the first step is easier, everything downstream improves.",
+  "source": "devto",
+  "tags": "ai, productivity, tooling, software"
+}

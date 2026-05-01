@@ -1,0 +1,9 @@
+{
+  "id": "a45a2502-a34b-4ce9-a633-576b40dcc004",
+  "title": "Building AI Pipelines with RocketRide 🚀",
+  "url": "https://dev.to/mounika_bopperla_103d7ac4/building-ai-pipelines-with-rocketride-497m",
+  "date": "2026-04-24T05:30:48Z",
+  "content": "I recently explored RocketRide and built two simple AI pipelines:\n\n1. Weather Data Summarization Pipeline  \n2. Sentiment Analysis Pipeline  \n\nBoth pipelines follow a simple structure:\nInput → LLM → Output  \n\nI used the RocketRide Python SDK to trigger pipelines and process data.\n\nWhat I liked:\n- Clean pipeline abstraction  \n- Easy integration with Python  \n- Fast prototyping of AI workflows  \n\nThis was a great hands-on experience building real-world AI pipelines.\n\nLooking forward to exploring more use cases!",
+  "source": "devto",
+  "tags": "ai, machinelearning, python, opensource"
+}

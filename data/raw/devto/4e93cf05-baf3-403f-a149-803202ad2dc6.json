@@ -1,0 +1,9 @@
+{
+  "id": "4e93cf05-baf3-403f-a149-803202ad2dc6",
+  "title": "Should platforms integrate or embed their payments?",
+  "url": "https://dev.to/carr/should-platforms-integrate-or-embed-their-payments-2ca7",
+  "date": "2026-04-01T00:59:39Z",
+  "content": "Payments can become more than infrastructure. For platforms, SaaS products, and online marketplaces, they can be a main revenue driver, allowing companies to gain control over (and profit from) financial activity within the product.\n\nThat's why we're seeing a big shift from integrated payments toward embedded payments, where transactions happen directly within the platform.\n\nEmbedded finance transaction volume is projected to exceed $7 trillion in the US alone by 2026, with a CAGR of 35.5%. That's because how users pay and how sellers get paid directly affects platform growth, retention, and revenue.\n\nSo when it comes to integrated vs. embedded payments, the choice really comes down to what your platform's goals are and how fast you need to start accepting payments. \n\nHere's the full breakdown:\n\n{% embed https://whop.com/blog/integrated-vs-embedded-payments/ %}",
+  "source": "devto",
+  "tags": "api, startup, saas, software"
+}

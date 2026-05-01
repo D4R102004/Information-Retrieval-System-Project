@@ -1,0 +1,9 @@
+{
+  "id": "9012da24-b9fd-4131-979a-f3ed3673c649",
+  "title": "The Vonage Dev Discussion: Making mistakes",
+  "url": "https://dev.to/vonagedev/the-vonage-dev-discussion-making-mistakes-32mc",
+  "date": "2026-04-24T20:01:26Z",
+  "content": "---\ntitle: \"The Vonage Dev Discussion: Making mistakes\"\npublished: true\nseries: The Vonage Dev Discussion\n---\n\nNobody is perfect! Even the most seasoned developers have made mistakes – it’s all just part of the learning process.\n\nOne mistake that is so common in software development is accidentally pushing secrets to a public repository 🙈🙉🙊\n\n{% embed https://vonage.dev/41PGNGN %}\n\nFortunately, there are lots of different guardrails you can put in place to help prevent the exposure of sensitive information like API keys, and we’ve covered a few of them in [these posts about environment variables](https://vonage.dev/48R3sWS).\n\nBut we’re curious: **What are some mistakes you’ve made as a developer? What did you learn from those mistakes?**\n\n![A stylized illustration of the Vonage mascot with the text: What are some mistakes you’ve made as a developer? What did you learn from those mistakes?](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/b9bjudjoqch6zqyh7vtd.png)\n\nShare your wisdom in the comments below! 🙏👇",
+  "source": "devto",
+  "tags": "security, discuss, python"
+}

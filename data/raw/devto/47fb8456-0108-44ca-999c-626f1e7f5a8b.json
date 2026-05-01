@@ -1,0 +1,9 @@
+{
+  "id": "47fb8456-0108-44ca-999c-626f1e7f5a8b",
+  "title": "The Hidden Problems in Your Network: Jitter, Noise & Loss",
+  "url": "https://dev.to/gaotek_sophia/the-hidden-problems-in-your-network-jitter-noise-loss-4fj1",
+  "date": "2026-04-29T20:26:35Z",
+  "content": "**Everything in your network depends on what happens at Layer 1. 🔬  \n\nJitter in the signal path. Noise degrading bit integrity. Impedance mismatch on a copper run. A fiber connector with 0.3dB more insertion loss than spec.  \n\nNone of these show up on a ping test. All of them impact performance.  \n\nPhysical Layer Tech gives signal integrity engineers, network architects, and field technicians the instruments to see what dashboards miss — oscilloscopes with 20GHz bandwidth, BERTs, spectrum analyzers, jitter analyzers, noise figure analyzers, cable certifiers, and fiber optic testers — all built to ANSI/TIA-568, IEEE 802.3, and IEC 61300.  \n\nLayer 1 is where networks are won or lost.  \n\n  \n\n🔗 https://physicallayertech.com/   \n\n  \n\n  \n#PhysicalLayer #SignalIntegrity #NetworkTesting #BERTesting #Telecom  ******",
+  "source": "devto",
+  "tags": "technology, iot, software, webdev"
+}

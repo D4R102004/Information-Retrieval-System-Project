@@ -1,0 +1,9 @@
+{
+  "id": "bade9f83-d4c2-4bb9-a740-f484ab18a958",
+  "title": "cuRd: Rethinking the Data Lifecycle for Modern Systems",
+  "url": "https://dev.to/amrevlinus_0aae680959e34c/curd-rethinking-the-data-lifecycle-for-modern-systems-5cam",
+  "date": "2026-04-07T15:50:35Z",
+  "content": "Introducing cuRd (Create, Update, Read, Delete), a data lifecycle model emphasizing chronological order and read operation priority in distributed systems for better engineering focus and system design. In most systems, reads outnumber writes by orders of magnitude, yet caches are afterthoughts and indexes get discovered missing in post-mortems.\n\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/xkuhe1aojlpll045uq2d.png)\n\n- Slideshare: https://www.slideshare.net/slideshow/curd-rethinking-the-data-lifecycle-for-modern-systems/286882981\n- Drive: https://drive.google.com/file/d/1PPfYl7WpjrhaFGewzFnTQt7lVYsqWkQ5/view?usp=sharing\n",
+  "source": "devto",
+  "tags": "software, distributedsystems, softwareengineering"
+}

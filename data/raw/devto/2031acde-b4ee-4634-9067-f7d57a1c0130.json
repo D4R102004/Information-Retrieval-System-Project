@@ -1,0 +1,9 @@
+{
+  "id": "2031acde-b4ee-4634-9067-f7d57a1c0130",
+  "title": "Today’s Progress Update — Food Blog Project",
+  "url": "https://dev.to/cyberb0x/todays-progress-update-food-blog-project-f9",
+  "date": "2026-04-20T18:15:16Z",
+  "content": "A productive day working on my Food Blog Platform 🍰\n\nHere’s what I accomplished today:\n\n🔹 Improved recipe listing performance and fixed filtering edge cases\n🔹 Enhanced live search functionality (faster + more stable results)\n🔹 Fixed pagination behavior with category filters\n🔹 Polished UI elements (spacing, hover effects, responsiveness)\n🔹 Improved like system stability and animation consistency\n🔹 Refactored parts of the Django views for cleaner structure\n\n💡 Small but important step toward a more scalable and production-ready project.\n\nEach improvement brings the platform closer to a real-world product experience 🚀\n\nNext steps:\n➡️ User authentication system\n➡️ Favorites/bookmarks feature\n➡️ Deployment setup\n\n#Python #Django #FullStack #WebDevelopment #100DaysOfCode #FoodTech\n\n\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/wgd5547umxkn459ctvkr.png)\n\n\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/5gkxoj1dmmq1jiorzk6u.png)",
+  "source": "devto",
+  "tags": "ai, webdev, programming, python"
+}

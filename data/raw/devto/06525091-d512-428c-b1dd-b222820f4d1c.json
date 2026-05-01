@@ -1,0 +1,9 @@
+{
+  "id": "06525091-d512-428c-b1dd-b222820f4d1c",
+  "title": "Test Cases",
+  "url": "https://dev.to/vidya_cdd37fca763a53a10e2/test-cases-4gd9",
+  "date": "2026-04-15T15:54:57Z",
+  "content": "**What is a Test Case?**\n         A test case is a set of conditions or steps used to check whether a software application is working correctly or not.\n\n**Why do we use Test Cases?**\n           We use test cases to ensure the software works properly and meets requirements.\n\n**Main reasons:**\n\n1.To verify functionality\n→ Check if each feature works as expected\n2.To find bugs\n→ Helps identify errors in the application\n3.For reusability\n→ Same test case can be used again in regression testing\n4.For documentation\n→ Keeps a record of testing process\n5.To improve quality\n→ Ensures better and reliable software\n\n**Test Case Table - Registration Form**\n          \n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/gccw3mhzqsfth5zq0gz8.jpg)\n\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/20uk7k67m9vt6n65r46u.jpg)",
+  "source": "devto",
+  "tags": "testing, software, beginners"
+}

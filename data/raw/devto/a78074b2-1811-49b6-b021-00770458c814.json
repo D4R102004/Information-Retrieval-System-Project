@@ -1,0 +1,9 @@
+{
+  "id": "a78074b2-1811-49b6-b021-00770458c814",
+  "title": "The Token Math behind Uber's AI Budget Blowup",
+  "url": "https://dev.to/productcurious/the-token-math-behind-ubers-ai-budget-blowup-7bh",
+  "date": "2026-04-23T20:16:17Z",
+  "content": "Uber's CTO announced last week that his team had burned through the company's entire annual AI budget in four months. 5,000 engineers got Claude Code in December. By March, 84% had drifted from single-shot queries to agentic workflows. The tool didn't change. The per-user cost did.                                                   \n                                                                  \nThis is where most enterprise AI budgets are breaking right now. Workflow complexity drifts upward. The bill scales with that. Nobody re-forecasts.\n                                                                                                                         \nI wrote up the math: token benchmarks by workflow type, the 40-60% of hidden infrastructure costs most managers miss,prompt caching as a 50-90% cost lever, and the forecasting formula to run before the next deployment.\n                                                                                                                         \nFull piece on productcurious: https://www.productcurious.com/p/a-managers-guide-to-reducing-ai-costs",
+  "source": "devto",
+  "tags": "ai, finops, productivity, software"
+}

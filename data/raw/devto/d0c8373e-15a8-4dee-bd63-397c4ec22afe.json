@@ -1,0 +1,9 @@
+{
+  "id": "d0c8373e-15a8-4dee-bd63-397c4ec22afe",
+  "title": "✨ Did you know Git has a hidden gem called Git Worktree?",
+  "url": "https://dev.to/devsk001/did-you-know-git-has-a-hidden-gem-called-git-worktree-43od",
+  "date": "2026-04-27T05:14:26Z",
+  "content": "Most of us switch branches by stashing changes, checking out, and then losing track of what we were doing. But Git Worktree makes this so much easier.\n\n👉 With worktree, you can check out multiple branches at the same time, each in its own folder, but all connected to the same .git repo.\n\nWhy it’s useful:\nKeep a long build running while you code a new feature\n\nReview a PR branch without disturbing your main workspace\n\nTest deployment scripts across different branches side by side\n\nThe best part? No extra setup. It’s already built into Git — yet many developers don’t even know it exists.\n\nIf you’re juggling multiple branches daily, Git Worktree can save you time and headaches.\n\n💬 Have you tried it before? How has it changed your workflow?",
+  "source": "devto",
+  "tags": "webdev, git, software, ai"
+}
