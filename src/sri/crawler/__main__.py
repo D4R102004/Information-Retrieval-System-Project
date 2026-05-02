@@ -12,6 +12,7 @@ import sys
 from sri.crawler.pipeline import JsonPipeline
 from sri.crawler.spiders.devto import DevToSpider
 from sri.crawler.spiders.hackernews import HackerNewsSpider
+from sri.crawler.spiders.realpython import RealPythonSpider
 
 
 def main() -> int:
@@ -35,6 +36,7 @@ def main() -> int:
     spiders = [
         DevToSpider(max_articles=args.max_articles),
         HackerNewsSpider(max_articles=args.max_articles),
+        RealPythonSpider(max_articles=args.max_articles),
     ]
     pipeline = JsonPipeline(output_directory="data/raw")
     try:
