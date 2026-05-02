@@ -1,0 +1,9 @@
+{
+  "id": "0c41ce4b-f5a5-4672-ae92-5931cef02c28",
+  "title": "Your article is well-written. But is it yours?",
+  "url": "https://dev.to/dzhuneyt/your-article-is-well-written-but-is-it-yours-59kh",
+  "date": "2026-04-08T09:45:42Z",
+  "content": "Most technical writing used to come from one of two places - direct experience or serious research. Either way, you had to process the material yourself before you could write about it.\n\nNow? AI can handle all of it:\n\n- The research\n- The structure\n- The writing\n- The polish\n\nUsing it for writing and polish? Totally fine. As a non-native English speaker with an engineering brain, I'd rather be solving problems in code. AI helps me take what I actually know and present it clearly. That's a genuine win.\n\nThe problem starts when AI is also generating the knowledge. When you ask it to write about a topic you haven't worked with, haven't debugged at 2am, haven't formed an opinion on through experience - you end up with something that reads well and says nothing.\n\nI'm glad I started my career before this shift. I got to build the habit of sitting with a problem, forming my own understanding, and then writing about it. That sequence matters - and it's the first thing people skip now that they don't have to do it.\n\nAs engineers, the value we bring isn't in assembling sentences. It's the hard-won context - the tradeoffs we've hit, the production incidents that changed how we think, the \"don't do this\" that only comes from having done it. AI can't fake that. But it can produce a convincing imitation that fools everyone except the people who actually know.",
+  "source": "devto",
+  "tags": "ai, contentwriting, software, programming"
+}

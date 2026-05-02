@@ -1,0 +1,9 @@
+{
+  "id": "9fb06413-b042-4844-992c-545ec52b2366",
+  "title": "1x -> 10x -> 100x Engineer with Claude Code and CLIs",
+  "url": "https://dev.to/josiahbryan/1x-10x-100x-engineer-with-claude-code-and-clis-fc6",
+  "date": "2026-04-17T19:08:03Z",
+  "content": "It is rather amusing to me that this is the sum total of a prompt needed to get Claude Code to take a task from my task system, find the code, look at the production database, debug the problem, propose a solution, update task status for review, test it, and push the fix to production. \n\nPrompting has gone from memorize prompts and articulate myself -> assemble a bunch of skills in a single line:\n\n`/bizcoach-task bctask_gdn03rem36apsaoax7vei8qzy /prod-data /team-debug`\n\nCreating CLIs for the tools I use everyday (bizcoach and prod DB access) + custom skills to guide CC on all of this has been such an unlock - not just for code, but also for ingesting data from all the com channels - client regularly WhatsApp me bug reports (so I created `whatsapp-cli` to access WhatsApp - see https://github.com/josiahbryan/whatsapp-cli), then talk about the problems in meetings (so I pull transcripts via `read-ai` MCP), and also file bugs in ClickUp (so I use `composio-cli` to talk to ClickUp), and email me screenshots even (`composio-cli` -> Gmail) - all orchestrated by ClaudeCode + my task app. ... then I just tell another CC window to pull the new task and do it while I go eat lunch. \n\nPeople used to talk about the 10x engineer. I'd wager I'm getting up to 100x, given that I no longer need 4x juniors + Project Manager + 2x seniors to run all this - payroll used to be $12K/month for me, now it's < $1K/month - and AI spend on tokens for coding is < $3K (Cursor Pro + Claude Pro + extra usages/overages). Fun times we're living in! ",
+  "source": "devto",
+  "tags": "claude, software, ai, programming"
+}

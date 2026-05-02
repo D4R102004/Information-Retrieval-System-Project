@@ -1,0 +1,9 @@
+{
+  "id": "ffb84c69-55f8-4fd1-b68b-5be86d8d9e6e",
+  "title": "When Your Data Pipeline Becomes a Coffee Pipeline",
+  "url": "https://dev.to/gimi5555/when-your-data-pipeline-becomes-a-coffee-pipeline-269o",
+  "date": "2026-04-29T01:32:53Z",
+  "content": "I'm at my favourite coffee shop, laptop open, terminal humming. The barista asks what I'm working on. \"Just setting up a real-time data pipeline,\" I say, trying to sound casual.\n\nShe nods knowingly. \"Like for... coffee orders?\"\n\nI laugh. \"No, for business intelligence. Using Python, PostgreSQL, and AWS Lambda to process streaming data.\"\n\nNext thing I know, I've been roped into building their new \"smart ordering system.\" Suddenly my data pipeline is literally a coffee pipeline. My Jenkins CI/CD is now triggering espresso shots. My MongoDB is storing latte preferences. My GCP functions are calculating optimal milk-to-coffee ratios.\n\nThree weeks in, the system works perfectly. Too perfectly. It's now predicting when customers will arrive based on their previous order patterns. The barista calls it \"creepy but helpful.\" I call it an unintended consequence of saying \"yes\" too quickly.\n\n**How would you handle it?** If you built something that worked _too_ \n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/66m00jnbltecxcbx2mv3.png)well in an unexpected context, would you embrace it or pull back?",
+  "source": "devto",
+  "tags": "ai, discuss, developers, software"
+}

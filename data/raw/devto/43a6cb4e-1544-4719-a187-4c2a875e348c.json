@@ -1,0 +1,9 @@
+{
+  "id": "43a6cb4e-1544-4719-a187-4c2a875e348c",
+  "title": "Early POC: Documenting Software architecture with C4 and the Structurizr DSL",
+  "url": "https://dev.to/salzaverde/early-poc-documenting-software-architecture-with-c4-and-the-structurizr-dsl-1e3i",
+  "date": "2026-04-14T15:37:50Z",
+  "content": "A couple of months ago I conducted a public ODI/Jobs-to-be-done research on current pain points of documenting software architecture.\n\nI'm excited to share a very early proof of concept of the derived solution at [https://app.maniok.io](https://app.maniok.io)\nIt currently only works for public repositories and is [open source](https://github.com/danischuetz/maniok) (MIT licensed)\n\nIn essence, it is a Structurizr / C4 diagrams renderer that works on git repositories containing Structurizr documentation.\n\nSupport for Structurizr is very basic and there are a couple of known issues (listed in the docs).\n\nWhat do you think?",
+  "source": "devto",
+  "tags": "architecture, sideprojects, software"
+}

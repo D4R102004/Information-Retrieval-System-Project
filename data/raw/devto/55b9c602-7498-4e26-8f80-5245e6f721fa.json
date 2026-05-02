@@ -1,0 +1,9 @@
+{
+  "id": "55b9c602-7498-4e26-8f80-5245e6f721fa",
+  "title": "Django: relaciones Muchos a muchos (many to many) entre modelos",
+  "url": "https://dev.to/manuelcanga/django-relaciones-muchos-a-muchos-many-to-many-entre-modelos-cde",
+  "date": "2026-04-21T11:55:52Z",
+  "content": "![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/nm8qhn3gp7srkk06vih4.jpeg)\n\n## #¿Qué es una relación Many-to-Many?\n\nEn una base de datos, las tablas raramente viven solas. Casi siempre están **relacionadas entre sí**. Existen tres tipos principales de relaciones:\n\n| Tipo | Significado | Ejemplo |\n| --- | --- | --- |\n| `One-to-One` | Un registro se relaciona con _exactamente uno_ del otro | Una persona ↔ un DNI |\n| `One-to-Many` | Un registro se relaciona con _muchos_ del otro lado | Un autor → muchos libros |\n| `Many-to-Many` | _Muchos_ se relacionan con _muchos_ | Estudiantes ↔ Cursos |\n\nUna relación **Many-to-Many (M2M)** ocurre cuando _múltiples registros de una tabla_ pueden estar relacionados con _múltiples registros de otra tabla_, y viceversa.\n\nEn Django, las relaciones Many-to-Many se definen con el campo `ManyToManyField` en los modelos. Django se encarga _automáticamente_ de crear la tabla intermedia necesaria en la base de datos.\n\n## Leelo entero\n\n- Guía completa: https://manuelcanga.dev/piensa-en-django/django_many_to_many--piensa_en_python-manuelcanga.html \n- Otras guías (y más cada semana): https://github.com/manuelcanga/piensa-en-django\n",
+  "source": "devto",
+  "tags": "django, spanish, python, database"
+}

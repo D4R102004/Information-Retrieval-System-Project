@@ -1,0 +1,9 @@
+{
+  "id": "f368099b-95fc-45e4-a007-d68ab4180903",
+  "title": "Python Teaching Assistant just got a Code of Conduct + Security tools",
+  "url": "https://dev.to/acubura/python-teaching-assistant-just-got-a-code-of-conduct-security-tools-1696",
+  "date": "2026-04-23T16:03:38Z",
+  "content": "Hey devs 👋\n\nI've been building the Python Teaching Assistant — an open-source, beginner-friendly console program that teaches Python through conversation and real-life analogies, not textbook walls of text.\n\nThis week, two important things landed:\n\n**Code of Conduct**\n\nWe made it official: no judgment, no gatekeeping. Whether someone's confused about indentation or submitting their first PR, they're welcome here. The CoC covers everything from respectful disagreement to how we handle reports — privately, fairly, and seriously.\n\n**Security tooling**\n\n→ **Bandit** — runs static analysis on the Python codebase, catches security anti-patterns automatically.\n→ **Dependency Review** — every pull request now gets scanned for known-vulnerable or deprecated packages.\n\nWhy does a teaching project need this? Because students copy patterns. If the code they learn from has security smells, those habits travel with them. We want to model good practice, not just explain it.\n\nIf you want to contribute, learn from the source, or just poke around — the repo is open and the community is genuinely kind.\n\nDrop questions in the comments — through the security setup or the CoC approach.\n\nhttps://github.com/acubura\n\n#python #opensource #security #webdev #beginners\n\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/j9oa9bxpov517nj3rzx3.jpg)\n\n\n\n\n",
+  "source": "devto",
+  "tags": "opensource, python, security, showdev"
+}

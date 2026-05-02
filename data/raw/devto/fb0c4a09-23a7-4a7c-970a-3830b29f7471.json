@@ -1,0 +1,9 @@
+{
+  "id": "fb0c4a09-23a7-4a7c-970a-3830b29f7471",
+  "title": "Resume Builder from Yaml file",
+  "url": "https://dev.to/codersdawn/resume-builder-from-yaml-file-9jj",
+  "date": "2026-04-21T18:12:10Z",
+  "content": "I built an open-source tool called ResumeBuilder that generates an ATS-compliant resume from a simple YAML file.\n\nWhat it does:\n- Single resume.yaml file controls all content — no HTML edits needed\n- Auto-generates both HTML and PDF outputs\n- ATS-optimized single-column layout\n- CLI with flexible output path overrides\n- Powered by Python + WeasyPrint\n\nFeel free to fork/clone the repository and get started\nWould love feedback from the community.\n\n\nGitHub:\nhttps://github.com/S-Dawn/ResumeBuilder\n\n",
+  "source": "devto",
+  "tags": "opensource, python"
+}

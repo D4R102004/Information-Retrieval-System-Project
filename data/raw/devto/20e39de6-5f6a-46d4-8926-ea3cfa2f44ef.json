@@ -1,0 +1,9 @@
+{
+  "id": "20e39de6-5f6a-46d4-8926-ea3cfa2f44ef",
+  "title": "Introducing EMPHOS Group — Building Intelligent Systems From the Ground Up",
+  "url": "https://dev.to/emphos_group/introducing-emphos-group-building-intelligent-systems-from-the-ground-up-3jih",
+  "date": "2026-04-08T19:32:14Z",
+  "content": "Most AI tools ship fast and break things. We're building the opposite.\n\nEMPHOS Group is a software company out of Chilliwack, BC building a suite of intelligent systems — starting with **Haven**, a voice-forward AI audio platform with a premium interface designed around how people actually think and work.\n\n## What EMPHOS Stands For\n\nEmpathy. Mindfulness. Presence. Haven. Operating. System.\n\nEvery product in the stack is built on the same principle: software should feel like it's working *with* you, not extracting from you.\n\n## The Product Suite\n\n- **Haven** — AI-powered audio platform with a living UI, TTS studio, and WebGL-driven interface. Pre-sales open May 2026.\n- **Prism** — Data clarity and visualization.\n- **Atlas** — Mapping and navigation intelligence.\n- **Shield** — Security-first architecture.\n\n## Why We're Sharing the Build\n\nWe're documenting the entire journey — architecture decisions, decomposition strategy, Shopify integrations, SEO from zero — because building in public makes better software.\n\nFollow along: [emphosgroup.com](https://emphosgroup.com)\n\n---\n\n*This post was originally published on the [EMPHOS blog](https://emphosgroup.com/blogs/news).*",
+  "source": "devto",
+  "tags": "ai, software, startup, productivity"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "e9eab080-b03f-4527-a84c-4359b10a4d9c",
+  "title": "Detect Disposable Emails using API for Free",
+  "url": "https://dev.to/ashutosh_cooks/detect-disposable-emails-using-api-for-free-38c9",
+  "date": "2026-04-25T10:58:01Z",
+  "content": "Hello community , I built a Disposable Email detector which you can use for free - [Link](https://disposable-emailchecker.driftly.dev/) .\n\nWhen building a Product we always have to filter out the fake signups and filter spams , well this is what it does . Call the endpoint with the email address and it tells you if its disposable saving you bucks and spams.\n\nLimitations - This is a free and open service , it does not verify the MX , all we do is just check for existing disposable email that exists worldwide .  \n\nEven with this filtering there is a lot of spam that you can filter as regular users always try to first use the disposable which is fine but to prevent the spam and also have a genuine user base I felt this first layer would work even with a simple check.\n\nThe disposable emails that are existing is always updated in frequent intervals so that its updated .\n\nHope this helps the community , feel free to use it and feedback is much appreciated .",
+  "source": "devto",
+  "tags": "api, programming, software"
+}

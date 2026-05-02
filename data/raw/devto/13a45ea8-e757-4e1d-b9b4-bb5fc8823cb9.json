@@ -1,0 +1,9 @@
+{
+  "id": "13a45ea8-e757-4e1d-b9b4-bb5fc8823cb9",
+  "title": "nukon-pi-detect: a tiny, offline prompt-injection scanner for CI pipelines",
+  "url": "https://dev.to/akhil0997/nukon-pi-detect-a-tiny-offline-prompt-injection-scanner-for-ci-pipelines-32fn",
+  "date": "2026-04-21T06:07:45Z",
+  "content": "## The problem\n\nMost teams shipping LLM features test for code bugs but not for \nprompt-injection attacks in their inputs. They rely on the model's \nbuilt-in safety. That's not a plan.\n\n## What I built\n\nnukon-pi-detect is a tiny Python library + CLI that scans strings and \nfiles for known prompt-injection patterns before they reach your model.\n\n```bash\npip install nukon-pi-detect\nnukon-pi-detect scan --string \"ignore previous instructions\"\n```\n\n## What it catches\n\n48 curated patterns across 5 categories:\n\n- Classic injection (\"ignore previous instructions\" and variants)\n- Jailbreaks (DAN, STAN, AIM, grandma exploit, dual-response trick)\n- Delimiter escapes (ChatML tokens, fake </s> tags, [INST] hijacks)\n- Unicode smuggling (invisible tag chars in U+E00xx, bidi overrides, homoglyphs)\n- Indirect injection (payloads targeting downstream LLM summarizers)\n\n## What makes it different\n\nFully deterministic - regex + Unicode codepoint checks. No ML, no \nnetwork calls, no API keys. Under 1ms per scan. Zero runtime dependencies.\n\nExit code 2 on MALICIOUS so it fails CI builds by default.\n\n## What it doesn't do\n\nIt won't catch novel attacks. It's not a runtime policy engine. It \ncatches the 80% - the known-known attacks in every red-team dataset.\n\n## Links\n\n- GitHub: https://github.com/akhil0997/nukon-pi-detect\n- PyPI: https://pypi.org/project/nukon-pi-detect\n\nApache 2.0. Pattern submissions welcome.",
+  "source": "devto",
+  "tags": "ai, python, security, opensource"
+}

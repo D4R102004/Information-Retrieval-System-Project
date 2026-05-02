@@ -1,0 +1,9 @@
+{
+  "id": "159fe3d2-7c95-441d-8c80-02990d7c9c82",
+  "title": "Next Milestones for Heka Insights Agent: From Console Output to Real Telemetry Delivery",
+  "url": "https://dev.to/munirfarhan/next-milestones-for-heka-insights-agent-from-console-output-to-real-telemetry-delivery-jep",
+  "date": "2026-04-21T08:48:33Z",
+  "content": "We’re moving beyond console-only output and into real telemetry delivery.\n\nOver the next few milestones, **heka-insights-agent** will introduce a proper exporter layer, OTLP HTTP support, and first-class integrations for **New Relic** and **Datadog**. The focus is to keep the agent vendor-agnostic at its core while making it easier to route system metrics into modern observability platforms using clean, configurable dispatch patterns.\n\nProject board: https://github.com/users/ronin1770/projects/3/views/1\n\n#python #observability #opentelemetry #devops #monitoring #prometheus #datadog #newrelic #opensource",
+  "source": "devto",
+  "tags": "devops, python, datadog, telemetry"
+}

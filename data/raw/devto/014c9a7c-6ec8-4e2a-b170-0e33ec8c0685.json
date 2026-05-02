@@ -1,0 +1,9 @@
+{
+  "id": "014c9a7c-6ec8-4e2a-b170-0e33ec8c0685",
+  "title": "Update: cut-bytes.py Version 0.0.18",
+  "url": "https://dev.to/mark0_617b45cda9782a/update-cut-bytespy-version-0018-3noj",
+  "date": "2026-04-21T05:03:58Z",
+  "content": "Didier Stevens has released an update for the tool `cut-bytes.py`, version 0.0.18. This update primarily addresses issues with escape sequences that cause warnings in recent versions of Python, ensuring smoother execution in modern environments.\n\nThe release includes the updated software package along with its corresponding cryptographic hashes for verification. This maintenance update is part of the ongoing effort to keep security tools compatible with the evolving Python ecosystem.\n\n---\n\n**[Read Full Article](https://blog.didierstevens.com/2026/04/19/update-cut-bytes-py-version-0-0-18/)**",
+  "source": "devto",
+  "tags": "cybersecurity, infosec, python, tooling"
+}

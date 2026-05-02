@@ -1,0 +1,9 @@
+{
+  "id": "369c890f-fa52-4976-bed4-fd31a2a5347f",
+  "title": "Detecting anomalies on conveyor belts",
+  "url": "https://dev.to/cinema_anime_3d23af19149e/detecting-anomalies-on-conveyor-belts-4475",
+  "date": "2026-04-24T15:34:26Z",
+  "content": "## Project Structure\n⦁\t_**Input Layer:**_ Video stream / Camera (OpenCV) \n⦁\t**_Preprocessing:_** Image resizing, ROI (Region of Interest), filtering \n⦁\t**_Reference-Based Detection:_** Image comparison using difference and SSIM (Structural Similarity Index) \n⦁\t**_Anomaly Detection Output:_** OK / NOK decision \n⦁\t**_Data Storage:_** Save anomaly images (raw dataset) \n⦁\t**_Data Labeling:_** Manual classification (tear, burn, abrasion, normal, false alarm) \n⦁\t**_Machine Learning Module:_** CNN model using TensorFlow / Keras \n⦁\t**_Model Output:_** Classification of anomaly type \n⦁\tFuture Extensions: Dashboard, real-time monitoring, alert system\n\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/kjhqfam9d56jx6v1g9la.jpeg)",
+  "source": "devto",
+  "tags": "ai, webdev, programming, python"
+}

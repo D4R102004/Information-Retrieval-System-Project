@@ -1,0 +1,9 @@
+{
+  "id": "779102b9-9063-45b2-a494-6ee89b13ba9e",
+  "title": "Hello DEV! | Building Agentic AI Systems with FastAPI",
+  "url": "https://dev.to/167aliraza/hello-dev-building-agentic-ai-systems-with-fastapi-15bg",
+  "date": "2026-04-23T10:59:04Z",
+  "content": "Hello, DEV community! 👋\n\nI’ve been a long-time reader, but I finally decided to stop lurking and start contributing. I’m a Backend Developer, and I spend most of my time in the world of Python, FastAPI, and the rapidly evolving landscape of AI Agents.\n\nWhat I’m Working On\nLately, I’ve been deep-diving into Agentic AI systems. Moving beyond simple RAG (Retrieval-Augmented Generation), I’m fascinated by how we can use frameworks like LangGraph and Google's ADK to create workflows that actually \"think\" and iterate.\n\nOne of my recent challenges was building a multi-agent system that doesn't just provide answers but validates its own logic before returning a response. The complexity of managing state in these workflows is a hurdle, but the payoff in accuracy is incredible.\n\nI’m joining DEV to:\n\nShare My Learning: I believe the best way to master a concept (like LLM orchestration) is to explain it to someone else.\n\nConnect: I’d love to meet other backend devs and AI enthusiasts working with Python and automation.\n\nLearn: I’m always looking to sharpen my skills in scalable architecture and new deployment strategies.\n\nMy Tech Stack\nLanguages: Python\n\nFrameworks: FastAPI, LangGraph, Google ADK, n8n\n\nLet’s Connect!\nI’m planning to write more about building Intelligent APIs and automating the boring stuff with AI. If you’re working on something similar or have tips for a new DEV author, let’s chat in the comments!",
+  "source": "devto",
+  "tags": "ai, programming, python, automation"
+}

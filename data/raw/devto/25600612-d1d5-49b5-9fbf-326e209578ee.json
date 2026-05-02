@@ -1,0 +1,9 @@
+{
+  "id": "25600612-d1d5-49b5-9fbf-326e209578ee",
+  "title": "Stop Uploading Your Files to Random Websites",
+  "url": "https://dev.to/kusumalabs/stop-uploading-your-files-to-random-websites-241m",
+  "date": "2026-04-23T04:02:24Z",
+  "content": "Ever noticed how most “free” image/PDF compressors work?\n👉 Upload your file\n👉 Wait\n👉 Download\nSimple… but also kinda risky.\nWhere does your file actually go?\n\nSo I built my own.\nA privacy-first image & PDF compressor that runs entirely in your browser.\n\nNo uploads\nNo servers\nNo tracking\n\nYour files never leave your device. Period.\n\nWhy I did this\nBecause I got tired of sending potentially sensitive files to random servers just to shrink a few KB.\nAnd honestly… we can do better as devs.\n\nI wrote the full story 👇\n(build process + tech decisions + lessons learned)\n👉 https://kusumalabs.com/2026/04/21/how-i-built-a-privacy-first-image-and-pdf-compressor-with-ai/\n\nLet me know what you think 🙌",
+  "source": "devto",
+  "tags": "guides, streamlit, python, productivity"
+}

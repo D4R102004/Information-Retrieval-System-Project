@@ -1,0 +1,9 @@
+{
+  "id": "6089a135-43fb-40ac-ad39-7633c54bf961",
+  "title": "A lightweight ODM for Qdrant — looking for feedback",
+  "url": "https://dev.to/quiteeasilydone/a-lightweight-odm-for-qdrant-looking-for-feedback-38l3",
+  "date": "2026-04-23T07:12:17Z",
+  "content": "I’ve been working with Qdrant in a few projects, and as things scaled, I found myself repeatedly dealing with:\n\n* raw payload field strings\n* verbose filter construction\n* scattered schema and index management\n\nTo make this easier to work with, I built a small ODM-style layer on top of Qdrant.\n\n---\n\n## What this tries to solve\n\nThe goal is not to hide Qdrant, but to make it more structured and easier to maintain:\n\n* define schema and indexes at the model level\n* write filters using Python expressions\n* keep CRUD and search logic consistent\n\n---\n\n## Example\n\n```python\nclass Document(QdrantModel):\n    __collection__ = \"documents\"\n\n    title: str = PayloadField(index=\"keyword\")\n    page: int = PayloadField(index=\"integer\")\n```\n\n```python\n(Document.category == \"tech\") & (Document.page >= 1)\n```\n\n---\n\n## Repo\n\nhttps://github.com/Jeung-SeongYeon/qdrant-odm\n\n---\n\n## Feedback\n\nThis is still an early version (v0.3.x), and I’m actively refining the design.\n\nIf you have experience with Qdrant or similar systems, I would really appreciate any feedback on:\n\n* API design\n* missing features\n* overall usability\n\nAlso, if you find it useful, a ⭐ would help a lot.\n\nThanks in advance.\n",
+  "source": "devto",
+  "tags": "ai, python, opensource, llm"
+}

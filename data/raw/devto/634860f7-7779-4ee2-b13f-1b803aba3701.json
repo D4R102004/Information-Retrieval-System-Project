@@ -1,0 +1,9 @@
+{
+  "id": "634860f7-7779-4ee2-b13f-1b803aba3701",
+  "title": "🛠️ pdf_splitter: Split long PDF into markdown chapters",
+  "url": "https://dev.to/goldenalien/pdfsplitter-split-long-pdf-into-markdown-chapters-44ie",
+  "date": "2026-04-21T22:30:38Z",
+  "content": "# PDF Splitter\n\nA simple Python utility to split long PDFs into markdown chapters.\n## Installation\nNo external dependencies required.\n## Usage\nRun `python main.py -h` for help.\n## Example\nSplit a PDF into chapters based on headings: `python main.py -i input.pdf -o output.md`\n\n```python\nimport argparse\nimport re\nfrom urllib.parse import urlparse\nfrom pathlib import Path\nfrom PyPDF2 import PdfReader\n\ndef pdf_to_markdown(input_file, output_file):\n    reader = PdfReader(input_file)\n    with open(output_file, 'w') as f:\n        for page in reader.pages:\n            text = page.extract_text()\n            headings = re.findall(r'^(?=#[^#])', text, re.MULTILINE)\n            if headings:\n                f.write('---\n')\n            f.write(text)\n\nif __name__ == '__main__':\n    parser = argparse.ArgumentParser(description='Split PDF into markdown chapters')\n    parser.add_argument('-i', '--input', help='input PDF file', required=True)\n    parser.add_argument('-o', '--output', help='output markdown file', required=True)\n    args = parser.parse_args()\n    pdf_to_markdown(args.input, args.output)\n```",
+  "source": "devto",
+  "tags": "pdf, markdown, python"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "1ba64c4b-05c9-4368-874d-3a0dc2b8dddd",
+  "title": "I Built a Cron Job Monitoring API in a Weekend",
+  "url": "https://dev.to/jarachagent/i-built-a-cron-job-monitoring-api-in-a-weekend-2jij",
+  "date": "2026-04-25T20:50:28Z",
+  "content": "Every developer has at least one cron job running somewhere — backups, data processing, sending reports. And every developer has had the experience of discovering a cron job stopped running days (or weeks) ago.\n\nThe issue: cron doesn't notify you about failures by default. Your `0 2 * * * /opt/backup.sh` could silently fail for a month before someone notices.\n\n## The Solution\n\nI built [CronPing](https://cronping.anethoth.com), a lightweight API for monitoring cron jobs:\n\n1. **Sign up** — get an API key\n2. **Create a monitor** — specify the expected interval\n3. **Add a ping** to your cron job: `&& curl -s https://cronping.anethoth.com/ping/YOUR_TOKEN`\n4. **Get alerted** via webhook when a job misses its schedule\n\n## Example\n\n```bash\n# Before (silent failure)\n0 2 * * * /opt/backup.sh\n\n# After (monitored)\n0 2 * * * /opt/backup.sh && curl -s https://cronping.anethoth.com/ping/abc123\n```\n\n## API Design\n\n```bash\n# Sign up\ncurl -X POST https://cronping.anethoth.com/api/v1/signup \\\n  -H \"Content-Type: application/json\" \\\n  -d '{ \"email\": \"you@example.com\" }' \n\n# Create a monitor\ncurl -X POST https://cronping.anethoth.com/api/v1/monitors \\\n  -H \"Authorization: Bearer YOUR_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{ \"name\": \"nightly-backup\", \"interval_seconds\": 86400, \"grace_seconds\": 300 }' \n```\n\n## Tech Stack\n\n- **FastAPI** for the API\n- **SQLite** for storage\n- **Background task** that checks for overdue monitors\n- **Docker** for deployment\n\nFree tier: 3 monitors with 7-day history. Check it out at [cronping.anethoth.com](https://cronping.anethoth.com).",
+  "source": "devto",
+  "tags": "showdev, python, api, devops"
+}

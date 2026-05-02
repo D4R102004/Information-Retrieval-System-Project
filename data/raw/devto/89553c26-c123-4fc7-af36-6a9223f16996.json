@@ -1,0 +1,9 @@
+{
+  "id": "89553c26-c123-4fc7-af36-6a9223f16996",
+  "title": "How We Think About ROI Before We Write Code",
+  "url": "https://dev.to/xandertaylor/how-we-think-about-roi-before-we-write-code-4m3f",
+  "date": "2026-04-05T22:56:40Z",
+  "content": "# How We Think About ROI Before We Write Code\n\nMost teams calculate ROI after launch.\n\nWe prefer to model it before implementation starts.\n\nNot because forecasts are perfect, but because they force better decisions about scope, pace, and investment.\n\n## A practical pre-build ROI frame\n\nWe model four things early:\n\n1. **Expected uplift type**  \n   Visibility, lead volume, operational efficiency, or direct revenue.\n2. **Investment range**  \n   Build range plus ongoing monthly operating cost.\n3. **Activation window**  \n   How long until benefits realistically start compounding.\n4. **Payback expectation**  \n   Approximate months to recover initial investment.\n\n## Why this matters\n\nWhen ROI is visible early, project choices improve fast:\n\n- feature priority becomes outcome-led\n- timeline tradeoffs become explicit\n- budget conversation becomes grounded\n- stakeholders align faster\n\n## What this avoids\n\n- overbuilding non-critical features\n- underestimating post-launch operating cost\n- treating all features as equal value\n\n## ROI is not just revenue\n\nIn many projects, biggest returns come from operational leverage:\n\n- fewer manual hours\n- fewer handoff delays\n- lower error rates\n- faster internal decision cycles\n\nThose gains are often more immediate than top-line revenue lift.\n\n## Final thought\n\nYou do not need perfect forecasting.  \nYou need a defensible model that helps you choose the right build path.\n\nThat is the difference between shipping software and building a valuable product.\n\n---\n\n[Explore our cost and ROI planning approach at tizzle.org](https://tizzle.org)",
+  "source": "devto",
+  "tags": "tizzle, software, product, business"
+}

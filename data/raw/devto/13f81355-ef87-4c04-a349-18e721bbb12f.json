@@ -1,0 +1,9 @@
+{
+  "id": "13f81355-ef87-4c04-a349-18e721bbb12f",
+  "title": "Day 1/75: Python DSA environment setup - Python DSA",
+  "url": "https://dev.to/thinkkun/day-175-python-dsa-environment-setup-python-dsa-4c72",
+  "date": "2026-04-23T23:47:07Z",
+  "content": "# Day 1/75: Python DSA environment setup\n\n*75 Day DSA in Python Challenge*\n\nToday I focused on building a Python setup that makes daily DSA work fast to run, inspect, and test. The strongest checkpoints were keep the project layout simple enough that daily problems share helpers and quick checks cleanly, use the Python REPL, small scripts, and test files as part of the feedback loop instead of as afterthoughts, and treat tooling choices as part of the practice system because they compound over 60 days.\n\nThe mistake I wanted to avoid was treating the setup as disposable and rebuilding the same helpers every day. The day felt better once the invariant stayed visible and each update had one job.\n\nThe goal for tomorrow is simple: keep the rule clear enough that the next variation still feels related to the same idea. I also want to keep tracing tiny examples because they expose weak assumptions faster than large random tests.",
+  "source": "devto",
+  "tags": "python, dsa, algorithms, codinginterview"
+}

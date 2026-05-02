@@ -9,11 +9,7 @@ __pycache__/
 venv/
 env/
 
-# Data — too large for git
-data/raw/*
-data/processed/*
-!data/raw/.gitkeep
-!data/processed/.gitkeep
+
 
 # Environment variables — NEVER commit secrets
 .env

@@ -1,0 +1,9 @@
+{
+  "id": "cd17f298-b30f-414a-a1ba-cd16df3a2953",
+  "title": "Built a small tool to turn startup ideas into system designs cybewave.io",
+  "url": "https://dev.to/le_cybewave/built-a-small-tool-to-turn-startup-ideas-into-system-designs-cybewaveio-1bb0",
+  "date": "2026-03-31T02:09:38Z",
+  "content": "Hey all,\n\nSince I started working as SE in the past 9 years, I feel like I have many ideas, but it is not easy to pursue further, and with the generative AI comes along, I have been working on a small project called cybewave.io, and I wanted to share it here to get some honest feedback.\n\nThe idea came from a problem I kept running into myself. Every time I started a new project, I would either jump straight into coding or open a diagram tool and just stare at a blank screen. It always felt like there was a gap between having an idea and actually turning it into a clear system.\n\nSo I started building something that helps with that step.\n\nInstead of drawing diagrams manually, you describe your idea in plain language, and it helps you generate things like system architecture, data flow, and a rough structure of how the app could be built.\n\nIt is still early, and I’m trying to figure out if this is actually useful beyond my own workflow.\n\nHere’s the link if you want to check it out:\nhttps://www.cybewave.io/\n\nHappy coding and building!\n\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/fa4tjk5e3zlgsfg213b7.png)",
+  "source": "devto",
+  "tags": "ai, software, programming"
+}

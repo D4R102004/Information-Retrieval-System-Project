@@ -1,0 +1,9 @@
+{
+  "id": "6a1615f9-a3d2-4efa-820f-b1a459483b2e",
+  "title": "I Built a Private, Local-First AI Assistant with Flask",
+  "url": "https://dev.to/r2/i-built-a-private-local-first-ai-assistant-with-flask-1ib2",
+  "date": "2026-04-24T11:23:07Z",
+  "content": "The Goal: I wanted an AI assistant that doesn't save my logs to the cloud and utilize my hardware.\n\nThough it's quite slow as of now, I believe with further optimization and advancement in local silicon, edge AI would inevitably become the next big thing in the very near future.\n\nThe Tech: I used Flask, TinyLlama, and Python-dotenv for security. I also took the help of Claude and Copilot wherever the code was repetitive and well beyond my current grasp on Python.\nI am a college freshman (about to become a sophomore), but I seek merciless feedbacks. Do provide me honest feedbacks about this project.\n\n[Github Repository](https://github.com/sounak1410/Web-Based-Edge-AI-)\n\n{% github sounak1410/Web-Based-Edge-AI- %}",
+  "source": "devto",
+  "tags": "ai, python, showdev, opensource"
+}

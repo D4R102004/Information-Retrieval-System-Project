@@ -1,0 +1,9 @@
+{
+  "id": "d8eea28b-6ca3-43b3-8be5-ecb5c7d40342",
+  "title": "PomoWatch",
+  "url": "https://dev.to/codersdawn/pomowatch-f5h",
+  "date": "2026-04-22T21:50:00Z",
+  "content": "\nI built **PomoWatch** — a minimal Pomodoro timer for the desktop.\n\n**Features:**\n- Work, short break, and long break timers\n- Configurable session durations and cycle count\n- Start, pause, and reset controls\n- Completed session counter\n- Multi themes\n\n**Install on Ubuntu:**\n```shell\nwget https://github.com/S-Dawn/PomoWatch/releases/download/v0.1.0-1/pomowatch_0.1.0-1_all.deb\nsudo apt install ./pomowatch_0.1.0-1_all.deb\npomowatch\n```\n\nOr run from source with uv:\n```console\nuv run main.py\n```\n\nBeyond the app itself, the repo is also a practical reference for two things that often feel abstract until you work through them hands-on:\n\n**Debian packaging** — the project includes a full `debian/` directory with a working `dpkg-buildpackage` setup. It covers control files, install rules, changelogs, and how to produce a distributable `.deb` that installs cleanly via `apt`.\n\n**Docker containerisation of a desktop GUI** — the included `Dockerfile` demonstrates how to run a Tkinter app inside a container by forwarding X11 from the host, including display and audio device passthrough. A useful pattern if you have ever wondered how to containerise GUI apps on Linux.\n\nBoth are documented in the README and `BUILD_DEB.md` if you want to follow along or adapt them to your own projects.\n\n**Source code:**\n👉 https://github.com/S-Dawn/PomoWatch\n\nOpen source. Contributions and feedback are welcome.\n\n#productivity #opensource #pomodoro #linux #debian #docker #packaging #developers\n",
+  "source": "devto",
+  "tags": "linux, productivity, python, showdev"
+}

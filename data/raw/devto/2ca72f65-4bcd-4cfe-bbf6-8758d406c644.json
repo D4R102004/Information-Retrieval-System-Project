@@ -1,0 +1,9 @@
+{
+  "id": "2ca72f65-4bcd-4cfe-bbf6-8758d406c644",
+  "title": "When SSR Breaks: Next.js Returning RSC Instead of HTML",
+  "url": "https://dev.to/virendra2902/when-ssr-breaks-nextjs-returning-rsc-instead-of-html-1ag9",
+  "date": "2026-04-30T11:16:30Z",
+  "content": "While exploring a production site built with React + Next.js, I hit a route that didn’t return HTML.\n\nInstead, it returned the raw React Server Component (RSC) payload.\n\nThings like:\n• component tree references\n• chunk mappings (/_next/static/...)\n• providers (MantineProvider, ThemeProvider, etc.)\n\nBasically, the server streamed internal rendering data instead of a fully hydrated page.\n\nThis usually points to:\n• incorrect route handling (e.g. non-standard paths like .txt)\n• misconfigured SSR / App Router setup\n• wrong response headers (serving RSC as plain text instead of HTML)\n\nNot a direct exploit, but still a form of information disclosure.\n\nIt exposes framework internals and signals potential deployment gaps.\n\nWith frameworks like Next.js, the server–client boundary is thin.\nIf the rendering pipeline breaks, you don’t just lose UI —\nyou expose how your app actually works under the hood.\n\nCurious if others have encountered similar RSC leaks in production?\n![Image description](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/uhafi0yhwkbym3e54ahr.png)",
+  "source": "devto",
+  "tags": "nextjs, webdev, software, devops"
+}
