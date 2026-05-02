@@ -7,6 +7,7 @@ without knowing its internal details.
 
 import time
 from abc import ABC, abstractmethod
+from urllib.robotparser import RobotFileParser
 
 import httpx
 
@@ -33,6 +34,27 @@ class BaseSpider(ABC):
             max_articles: Maximum number of articles to fetch.
         """
         self.max_articles = max_articles
+
+    def _can_fetch(self, url: str) -> bool:
+        """Check robots.txt to verify the URL is allowed to be crawled.
+
+        Fetches and parses the robots.txt file from the URL's domain
+        and checks if our crawler is permitted to access the given URL.
+
+        Args:
+            url: The URL to check against robots.txt.
+
+        Returns:
+            True if crawling is permitted, False otherwise.
+        """
+        try:
+            parser = RobotFileParser()
+            parser.set_url(f"https://{url.split('/')[2]}/robots.txt")
+            parser.read()
+            return parser.can_fetch("*", url)
+        except Exception:
+            # If robots.txt cannot be fetched, allow by default
+            return True
 
     @abstractmethod
     def fetch_articles(self) -> list[ArticleItem]:
