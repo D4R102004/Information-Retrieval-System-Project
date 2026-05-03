@@ -6,7 +6,7 @@ DuckDuckGo and transform the results into a standardized article format.
 
 # Standard library
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Third-party
 from duckduckgo_search import DDGS
@@ -67,6 +67,6 @@ class WebSearcher:
             "content": content or "",
             "url": url,
             "source": "web",
-            "date": datetime.utcnow().isoformat(),
+            "date": datetime.now(timezone.utc).isoformat(),
             "tags": [],
         }
