@@ -42,3 +42,10 @@ build/
 
 # Notebooks checkpoints
 .ipynb_checkpoints/
+
+# Corpus de datos — generado por el crawler, no versionar
+data/raw/
+data/processed/
+
+# Logs
+wget-log
