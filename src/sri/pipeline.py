@@ -15,17 +15,14 @@ Uso rápido:
 """
 
 import os
-import json
-from typing import List, Dict, Optional
 
-from ..indexing.indexer import InvertedIndex
-from ..retrieval.lsi_model import LSIModel
-from ..retrieval.vector_store import VectorStore
-from ..ranking.ranking import RankingEngine
-from ..evaluation.evaluation import Evaluator
+from evaluation.evaluation import Evaluator
+from indexing.indexer import InvertedIndex
+from ranking.ranking import RankingEngine
+from retrieval.lsi_model import LSIModel
+from retrieval.vector_store import VectorStore
 
-
-DATA_DIR  = "data"
+DATA_DIR = "data"
 INDEX_DIR = os.path.join(DATA_DIR, "index")
 MODEL_DIR = os.path.join(DATA_DIR, "models")
 
@@ -44,13 +41,13 @@ class SRIPipeline:
         self.top_k = top_k
 
         # Módulos
-        self.indexer  = InvertedIndex(use_stemming=True)
-        self.lsi      = LSIModel(n_components=lsi_components)
-        self.vstore   = VectorStore(
+        self.indexer = InvertedIndex(use_stemming=True)
+        self.lsi = LSIModel(n_components=lsi_components)
+        self.vstore = VectorStore(
             collection_name="tech_software",
             persist_dir=INDEX_DIR,
         )
-        self.ranker   = RankingEngine()
+        self.ranker = RankingEngine()
         self.evaluator = Evaluator(k_values=[1, 3, 5, 10])
 
         if load_existing:
@@ -60,7 +57,7 @@ class SRIPipeline:
     # Indexación
     # ------------------------------------------------------------------
 
-    def index(self, documents: List[Dict], save: bool = True) -> None:
+    def index(self, documents: list[dict], save: bool = True) -> None:
         """
         Indexa una lista de documentos en todos los módulos.
 
@@ -84,10 +81,12 @@ class SRIPipeline:
 
         # Estadísticas
         stats = self.indexer.stats()
-        print(f"[Pipeline] Vocabulario: {stats['vocab_size']} términos | "
-              f"Longitud media doc: {stats['avg_doc_len']:.0f} tokens")
+        print(
+            f"[Pipeline] Vocabulario: {stats['vocab_size']} términos | "
+            f"Longitud media doc: {stats['avg_doc_len']:.0f} tokens"
+        )
 
-    def add_document(self, doc: Dict) -> None:
+    def add_document(self, doc: dict) -> None:
         """Agrega un documento al sistema sin reentrenar LSI."""
         self.indexer.add_document(doc)
         self.vstore.add([doc])
@@ -101,10 +100,10 @@ class SRIPipeline:
     def search(
         self,
         query: str,
-        top_k: Optional[int] = None,
+        top_k: int | None = None,
         use_lsi: bool = True,
         use_vector: bool = True,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Recupera y rankea documentos para una consulta.
 
@@ -126,12 +125,12 @@ class SRIPipeline:
             sorted_ids = sorted(scores, key=scores.get, reverse=True)[: k * 2]
             lsi_results = [
                 {
-                    "doc_id":  did,
-                    "score":   scores[did] / 10,  # normalizar
-                    "title":   self.indexer.doc_metadata.get(did, {}).get("title", ""),
+                    "doc_id": did,
+                    "score": scores[did] / 10,  # normalizar
+                    "title": self.indexer.doc_metadata.get(did, {}).get("title", ""),
                     "snippet": "",
-                    "url":     self.indexer.doc_metadata.get(did, {}).get("url", ""),
-                    "tags":    [],
+                    "url": self.indexer.doc_metadata.get(did, {}).get("url", ""),
+                    "tags": [],
                 }
                 for did in sorted_ids
             ]
@@ -148,7 +147,7 @@ class SRIPipeline:
 
         return self.ranker.assign_positions(ranked)
 
-    def search_ids(self, query: str, top_k: Optional[int] = None) -> List[str]:
+    def search_ids(self, query: str, top_k: int | None = None) -> list[str]:
         """Versión simplificada que devuelve solo IDs (para evaluación)."""
         results = self.search(query, top_k=top_k)
         return [r["doc_id"] for r in results]
@@ -160,8 +159,8 @@ class SRIPipeline:
     def evaluate(
         self,
         test_queries_path: str,
-        output_path: Optional[str] = None,
-    ) -> Dict:
+        output_path: str | None = None,
+    ) -> dict:
         """
         Evalúa el sistema con un archivo de consultas de prueba.
         """
