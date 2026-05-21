@@ -46,16 +46,18 @@ pre-commit install --hook-type commit-msg
 ```
 
 ## Usage
+
 ```bash
-# Step 1 — crawl documents
-python -m sri.crawler
-
-# Step 2 — build index
-python -m sri.indexer
-
-# Step 3 — launch interface
-python -m sri.interface
+make help        # show all available commands
+make install     # install dependencies and pre-commit hooks
+make crawl       # fetch documents from all sources
+make test        # run all tests
+make lint        # check code quality
+make format      # format code
+make clean       # remove cache files
 ```
+
+> Docker targets (`make docker-build`, `make docker-run`) will be available in Cut 3.
 
 ## Team
 
