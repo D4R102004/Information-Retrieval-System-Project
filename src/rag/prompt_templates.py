@@ -14,7 +14,7 @@ from typing import List, Dict
 import logging
 
 logger = logging.getLogger(__name__)
-
+MAX_CONTENT_SIZE = 500
 
 class PromptTemplate(ABC):
     """Abstract base for prompt generation strategies."""
@@ -53,7 +53,7 @@ class PromptTemplate(ABC):
             # Build document entry
             doc_id = doc.get("id", "unknown")
             title = doc.get("title", "Untitled")
-            content = doc.get("content", "")[:500]  # Truncate to 500 chars
+            content = doc.get("content", "")[:MAX_CONTENT_SIZE]  # Truncate
 
             doc_text = f"[{doc_id}] {title}\n{content}\n"
 
@@ -92,7 +92,6 @@ class DomainSpecificTemplate(PromptTemplate):
     Technical assistant role-play template.
 
     Trade-off: Good quality, moderate token usage, domain-aligned.
-    RECOMMENDED FOR DEVELOPMENT AND INITIAL TESTING.
 
     Suitable for technology and software domain. Includes role definition
     and clear instructions for citation and accuracy.
@@ -103,7 +102,6 @@ class DomainSpecificTemplate(PromptTemplate):
         self.system_prompt = (
             "You are a technical assistant specialized in software and technology. "
             "Your role is to provide accurate, informative answers based on the provided documents. "
-            "Always cite your sources using [DOC_ID] format when referencing information."
         )
         logger.debug("Initialized DomainSpecificTemplate")
 
@@ -133,7 +131,6 @@ class ChainOfThoughtTemplate(PromptTemplate):
     Chain-of-Thought reasoning template.
 
     Trade-off: Best quality, higher token usage, explicit reasoning.
-    RECOMMENDED FOR PRODUCTION AND FINAL EVALUATION.
 
     Encourages step-by-step reasoning, improving answer quality and
     consistency. Slightly higher token consumption but better results.

@@ -9,11 +9,15 @@ Core components:
 - PromptTemplate: Prompt generation strategies
 - CitationExtractor: Citation parsing and enrichment
 - OutputParser: Structured response parsing
+- RAGModule: Main orchestrator
 
 Example:
+    from rag.rag_module import RAGModule
     from rag.llm_provider import OllamaProvider
     
     llm = OllamaProvider(model="llama3.2:latest")
+    rag = RAGModule(pipeline, llm)
+    response = rag.generate("How does LSI work?")
 """
 
 __version__ = "0.1.0"
