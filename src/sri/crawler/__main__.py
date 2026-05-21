@@ -15,6 +15,7 @@ from sri.crawler.spiders.hackernews import HackerNewsSpider
 from sri.crawler.spiders.lobsters import LobstersSpider
 from sri.crawler.spiders.realpython import RealPythonSpider
 from sri.crawler.spiders.thenewstack import TheNewStackSpider
+from sri.crawler.spiders.theverge import TheVergeSpider
 
 
 def main() -> int:
@@ -41,6 +42,7 @@ def main() -> int:
         RealPythonSpider(max_articles=args.max_articles),
         LobstersSpider(max_articles=args.max_articles),
         TheNewStackSpider(max_articles=args.max_articles),
+        TheVergeSpider(max_articles=args.max_articles),
     ]
     pipeline = JsonPipeline(output_directory="data/raw")
     try:
