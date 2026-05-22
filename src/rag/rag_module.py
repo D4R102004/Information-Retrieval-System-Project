@@ -36,6 +36,7 @@ class RAGModule:
         template_type: str = "domain_specific",
         citation_extractor: Optional[CitationExtractor] = None,
         parser: Optional[OutputParser] = None,
+        pipeline=None,
     ):
         """
         Initialize RAG module.
@@ -46,29 +47,28 @@ class RAGModule:
                 Options: "basic", "domain_specific", "chain_of_thought"
             citation_extractor: Custom CitationExtractor (optional)
             parser: Custom OutputParser (optional)
-
-        Note:
-            Pipeline parameter intentionally no included.
-            This enables independent testing of RAG logic without SRIPipeline.
-            TODO: Add optional pipeline parameter for automatic retrieval
+            pipeline: SRIPipeline instance for automatic document retrieval (optional)
+                When provided, enables autonomous retrieval without explicit documents
 
         Example:
             >>> from rag.llm_provider import OllamaProvider
             >>> llm = OllamaProvider()
-            >>> rag = RAGModule(llm, template_type="chain_of_thought")
+            >>> rag = RAGModule(llm, template_type="chain_of_thought", pipeline=my_pipeline)
         """
         self.llm = llm
         self.parser = parser or OutputParser()
         self.citation_extractor = citation_extractor or CitationExtractor()
+        self.pipeline = pipeline
 
         # Create prompt template
         self.template_factory = PromptTemplateFactory()
         self.template = self.template_factory.create(template_type)
         self.template_type = template_type
 
+        pipeline_info = " with SRIPipeline integration" if pipeline else " in manual mode"
         logger.info(
             f"Initialized RAGModule with {template_type} template and "
-            f"{llm.get_metadata().get('provider', 'unknown')} LLM"
+            f"{llm.get_metadata().get('provider', 'unknown')} LLM{pipeline_info}"
         )
 
     def generate(
@@ -84,7 +84,7 @@ class RAGModule:
 
         Implements hybrid integration pattern:
         - If documents provided: Use for augmenting generation
-        - If no documents: TODO Retrieve via pipeline
+        - If no documents: Retrieve via pipeline
 
         Args:
             query: User question
@@ -106,10 +106,29 @@ class RAGModule:
         """
         start_time = time.time()
 
-        # TODO: Use pipeline to retrieve documents if not provided
+        # Auto-retrieval: Use pipeline if documents not provided
         if documents is None:
-            documents = []
-            logger.debug("No documents provided - using pure generation mode")
+            if self.pipeline:
+                try:
+                    raw_results = self.pipeline.search(query, top_k=10)
+                    # Transform pipeline results to RAG document format
+                    documents = [
+                        {
+                            "id": result.get("doc_id"),
+                            "title": result.get("title", "Untitled"),
+                            "content": result.get("snippet", ""),
+                            "url": result.get("url"),
+                            "score": result.get("score"),
+                        }
+                        for result in raw_results
+                    ]
+                    logger.info(f"Retrieved {len(documents)} documents via SRIPipeline")
+                except Exception as e:
+                    logger.warning(f"Pipeline retrieval failed: {e}. Using pure generation mode.")
+                    documents = []
+            else:
+                documents = []
+                logger.debug("No documents provided and no pipeline - using pure generation mode")
 
         logger.info(
             f"Generating answer for query: '{query[:60]}...' "
