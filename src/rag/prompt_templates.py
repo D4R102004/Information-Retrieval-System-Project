@@ -19,8 +19,18 @@ MAX_CONTENT_SIZE = 500
 class PromptTemplate(ABC):
     """Abstract base for prompt generation strategies."""
 
+    json_response = """IMPORTANT: Respond ONLY with valid JSON in this exact format:
+{{
+  "answer": "Your detailed answer here with inline citations [doc_id]",
+  "citations": ["doc_id1", "doc_id2", ...]
+}}
+
+Ensure the JSON is properly formatted with escaped quotes and no trailing commas.
+
+JSON Response:"""
+
     @abstractmethod
-    def apply(self, query: str, documents: List[Dict]) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
         """
         Generate a prompt from query and retrieved documents.
 
@@ -75,7 +85,7 @@ class BasicTemplate(PromptTemplate):
     Useful for rapid prototyping and testing.
     """
 
-    def apply(self, query: str, documents: List[Dict]) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
         """Generate basic prompt."""
         context = self._format_context(documents, max_chars=2000)
 
@@ -84,7 +94,7 @@ class BasicTemplate(PromptTemplate):
 
 Question: {query}
 
-Answer:"""
+{self.json_response if require_json else "Answer:"}"""
 
 
 class DomainSpecificTemplate(PromptTemplate):
@@ -105,13 +115,13 @@ class DomainSpecificTemplate(PromptTemplate):
         )
         logger.debug("Initialized DomainSpecificTemplate")
 
-    def apply(self, query: str, documents: List[Dict]) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
         """Generate domain-specific prompt."""
         context = self._format_context(documents, max_chars=4000)
 
         return f"""{self.system_prompt}
 
-## Retrieved Documents:
+## Available Documents:
 {context}
 
 ## User Question:
@@ -123,7 +133,7 @@ class DomainSpecificTemplate(PromptTemplate):
 - If information is not in the documents, state that clearly
 - Be precise and avoid speculation
 
-## Answer:"""
+## {self.json_response if require_json else "Answer:"}"""
 
 
 class ChainOfThoughtTemplate(PromptTemplate):
@@ -135,12 +145,19 @@ class ChainOfThoughtTemplate(PromptTemplate):
     Encourages step-by-step reasoning, improving answer quality and
     consistency. Slightly higher token consumption but better results.
     """
+    def __init__(self):
+        """Initialize domain-specific template."""
+        self.system_prompt = (
+            "You are a technical assistant specialized in software and technology. "
+            "Your role is to provide accurate, informative answers based on the provided documents. "
+        )
+        logger.debug("Initialized ChainOfThoughtTemplate")
 
-    def apply(self, query: str, documents: List[Dict]) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
         """Generate chain-of-thought prompt."""
         context = self._format_context(documents, max_chars=5000)
 
-        return f"""You are a technical assistant specializing in software and technology.
+        return f"""{self.system_prompt}
 
 ## Available Documents:
 {context}
@@ -158,14 +175,14 @@ Think through this step-by-step:
 
 3. **Source Attribution:** Which specific documents support each claim?
 
-4. **Answer Construction:** Generate a comprehensive answer with proper citations.
-
+4. **Answer Construction:** Generate a comprehensive answer with proper citations based on the analysis.
+{"\n5. **Citation Extraction:** Extract document IDs that support your answer\n" if require_json else ""}
 ## Answer Format:
 - Provide your answer with inline citations [doc_id]
 - Explain the reasoning when synthesizing multiple sources
 - Be precise and cite only when information comes from documents
 
-## Answer:"""
+## {self.json_response if require_json else "Answer:"}"""
 
 
 class PromptTemplateFactory:
