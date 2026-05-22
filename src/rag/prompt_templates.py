@@ -30,7 +30,7 @@ Ensure the JSON is properly formatted with escaped quotes and no trailing commas
 JSON Response:"""
 
     @abstractmethod
-    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> List[str]:
         """
         Generate a prompt from query and retrieved documents.
 
@@ -85,16 +85,16 @@ class BasicTemplate(PromptTemplate):
     Useful for rapid prototyping and testing.
     """
 
-    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> List[str]:
         """Generate basic prompt."""
         context = self._format_context(documents, max_chars=2000)
 
-        return f"""Context:
+        return [f"""Context:
 {context}
 
 Question: {query}
 
-{self.json_response if require_json else "Answer:"}"""
+{self.json_response if require_json else "Answer:"}"""]
 
 
 class DomainSpecificTemplate(PromptTemplate):
@@ -115,11 +115,11 @@ class DomainSpecificTemplate(PromptTemplate):
         )
         logger.debug("Initialized DomainSpecificTemplate")
 
-    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> List[str]:
         """Generate domain-specific prompt."""
         context = self._format_context(documents, max_chars=4000)
 
-        return f"""{self.system_prompt}
+        return [f"""{self.system_prompt}
 
 ## Available Documents:
 {context}
@@ -133,7 +133,7 @@ class DomainSpecificTemplate(PromptTemplate):
 - If information is not in the documents, state that clearly
 - Be precise and avoid speculation
 
-## {self.json_response if require_json else "Answer:"}"""
+## {self.json_response if require_json else "Answer:"}"""]
 
 
 class ChainOfThoughtTemplate(PromptTemplate):
@@ -153,11 +153,11 @@ class ChainOfThoughtTemplate(PromptTemplate):
         )
         logger.debug("Initialized ChainOfThoughtTemplate")
 
-    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> str:
+    def apply(self, query: str, documents: List[Dict], require_json: bool = False) -> List[str]:
         """Generate chain-of-thought prompt."""
         context = self._format_context(documents, max_chars=5000)
 
-        return f"""{self.system_prompt}
+        return [f"""{self.system_prompt}
 
 ## Available Documents:
 {context}
@@ -182,7 +182,7 @@ Think through this step-by-step:
 - Explain the reasoning when synthesizing multiple sources
 - Be precise and cite only when information comes from documents
 
-## {self.json_response if require_json else "Answer:"}"""
+## {self.json_response if require_json else "Answer:"}"""]
 
 
 class PromptTemplateFactory:

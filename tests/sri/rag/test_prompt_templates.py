@@ -9,6 +9,7 @@ Tests cover:
 """
 
 import pytest
+from typing import List
 from src.rag.prompt_templates import (
     PromptTemplate,
     BasicTemplate,
@@ -29,7 +30,7 @@ class TestBasicTemplate:
             {"id": "doc_1", "title": "Python Basics", "content": "Python is great."}
         ]
 
-        prompt = template.apply(query, documents)
+        prompt = template.apply(query, documents)[0]
 
         assert query in prompt
         assert "doc_1" in prompt
@@ -38,7 +39,7 @@ class TestBasicTemplate:
     def test_basic_template_empty_docs(self):
         """BasicTemplate should handle empty document list."""
         template = BasicTemplate()
-        prompt = template.apply("What is AI?", [])
+        prompt = template.apply("What is AI?", [])[0]
 
         assert "What is AI?" in prompt
         assert "Answer:" in prompt
@@ -52,7 +53,7 @@ class TestBasicTemplate:
             {"id": "doc_1", "title": "Long Doc", "content": long_content}
         ]
 
-        prompt = template.apply("Query", documents)
+        prompt = template.apply("Query", documents)[0]
 
         # Context should be truncated
         assert len(prompt) < len(long_content) + 200
@@ -69,7 +70,7 @@ class TestDomainSpecificTemplate:
             {"id": "doc_2", "title": "ML Guide", "content": "ML uses algorithms..."}
         ]
 
-        prompt = template.apply(query, documents)
+        prompt = template.apply(query, documents)[0]
 
         assert "technical assistant" in prompt.lower()
         assert "cite" in prompt.lower()
@@ -87,7 +88,7 @@ class TestDomainSpecificTemplate:
         template = DomainSpecificTemplate()
         documents = [{"id": "doc_1", "title": "Test", "content": "Content"}]
 
-        prompt = template.apply("Query", documents)
+        prompt = template.apply("Query", documents)[0]
 
         assert "[doc_id]" in prompt.lower() or "[" in prompt
 
@@ -107,7 +108,7 @@ class TestChainOfThoughtTemplate:
             }
         ]
 
-        prompt = template.apply(query, documents)
+        prompt = template.apply(query, documents)[0]
 
         assert query in prompt
         # Should include reasoning steps
@@ -118,7 +119,7 @@ class TestChainOfThoughtTemplate:
         template = ChainOfThoughtTemplate()
         documents = [{"id": "doc_1", "title": "Test", "content": "Content"}]
 
-        prompt = template.apply("Query", documents)
+        prompt = template.apply("Query", documents)[0]
 
         # Should mention analyzing documents
         lower_prompt = prompt.lower()
@@ -167,8 +168,8 @@ class TestPromptTemplateFactory:
         """Factory should support registering custom templates."""
 
         class CustomTemplate(PromptTemplate):
-            def apply(self, query: str, documents) -> str:
-                return f"Custom: {query}"
+            def apply(self, query: str, documents, require_json: bool = False) -> List[str]:
+                return [f"Custom: {query}{f"\n{self.json_response}" if require_json else ""}"]
 
         PromptTemplateFactory.register("custom", CustomTemplate)
 

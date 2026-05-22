@@ -137,7 +137,7 @@ class RAGModule:
 
         try:
             # Step 1: Apply prompt template
-            prompt = self.template.apply(query, documents)
+            prompt = self.template.apply(query, documents)[0]
             prompt_time = time.time() - start_time
 
             logger.debug(f"Prompt generated in {prompt_time:.2f}s ({len(prompt)} chars)")
