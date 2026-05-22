@@ -81,7 +81,6 @@ class TestDomainSpecificTemplate:
         template = DomainSpecificTemplate()
 
         assert "technical assistant" in template.system_prompt.lower()
-        assert "cite" in template.system_prompt.lower()
 
     def test_domain_specific_citation_instructions(self):
         """Should include citation format instructions."""
@@ -91,6 +90,7 @@ class TestDomainSpecificTemplate:
         prompt = template.apply("Query", documents)[0]
 
         assert "[doc_id]" in prompt.lower() or "[" in prompt
+        assert "cite" in prompt.lower()
 
 
 class TestChainOfThoughtTemplate:

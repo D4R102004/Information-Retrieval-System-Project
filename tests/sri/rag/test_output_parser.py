@@ -6,10 +6,19 @@ Tests cover:
 - JSON repair mechanisms
 - Parser fallback strategies
 - Response validation
+- Citation enrichment and hallucination filtering
 """
 
-import pytest
+from pathlib import Path
 import json
+import sys
+
+import pytest
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.rag.output_parser import OutputParser, Citation, RAGResponse
 
 
@@ -135,39 +144,92 @@ class TestOutputParserParsing:
     """Test output parsing."""
 
     def test_parse_valid_json(self):
-        """Should parse valid JSON directly."""
+        """Should parse valid JSON directly and enrich string citations."""
         valid_json = json.dumps({
             "answer": "Python is great.",
-            "citations": [
-                {"doc_id": "doc_001", "title": "Python Guide"}
-            ],
+            "citations": ["doc_001"],
         })
 
-        response = OutputParser.parse(valid_json)
+        documents = [
+            {
+                "id": "doc_001",
+                "title": "Python Guide",
+                "url": "https://example.com/python-guide",
+                "snippet": "Python is a versatile language.",
+                "source": "documentation",
+                "score": 0.95,
+            }
+        ]
+
+        response = OutputParser.parse(valid_json, documents)
 
         assert response.answer == "Python is great."
         assert len(response.citations) == 1
+        assert response.citations[0].doc_id == "doc_001"
+        assert response.citations[0].title == "Python Guide"
+        assert response.citations[0].url == "https://example.com/python-guide"
+        assert response.citations[0].source == "documentation"
+
+    def test_parse_valid_json_filters_hallucinated_citations(self):
+        """Should drop citations that are not present in the documents."""
+        valid_json = json.dumps({
+            "answer": "Python is great.",
+            "citations": ["doc_001", "doc_fake"],
+        })
+
+        documents = [
+            {
+                "id": "doc_001",
+                "title": "Python Guide",
+                "url": "https://example.com/python-guide",
+            }
+        ]
+
+        response = OutputParser.parse(valid_json, documents)
+
+        assert len(response.citations) == 1
+        assert response.citations[0].doc_id == "doc_001"
 
     def test_parse_json_with_markdown_blocks(self):
         """Should parse JSON in markdown code blocks."""
         markdown_json = '''```json
 {
     "answer": "Python tutorial",
-    "citations": []
+    "citations": ["doc_001"]
 }
 ```'''
 
-        response = OutputParser.parse(markdown_json)
+        documents = [
+            {
+                "id": "doc_001",
+                "title": "Python Guide",
+                "url": "https://example.com/python-guide",
+            }
+        ]
+
+        response = OutputParser.parse(markdown_json, documents)
 
         assert response.answer == "Python tutorial"
+        assert len(response.citations) == 1
+        assert response.citations[0].title == "Python Guide"
 
     def test_parse_broken_json_repairs(self):
         """Should repair and parse broken JSON."""
-        broken = "{'answer': 'test', 'citations': []}"
+        broken = "{'answer': 'test', 'citations': ['doc_001']}"
 
-        response = OutputParser.parse(broken)
+        documents = [
+            {
+                "id": "doc_001",
+                "title": "Test Document",
+                "url": "https://example.com/test",
+            }
+        ]
+
+        response = OutputParser.parse(broken, documents)
 
         assert response.answer == "test"
+        assert len(response.citations) == 1
+        assert response.citations[0].title == "Test Document"
 
     def test_parse_fallback_text_extraction(self):
         """Should fallback to text extraction if JSON repair fails."""
@@ -180,15 +242,19 @@ class TestOutputParserParsing:
         assert isinstance(response.citations, list)
 
     def test_parse_fallback_finds_citations(self):
-        """Should extract citations from text in fallback mode."""
+        """Should extract and enrich citations from text in fallback mode."""
         text = "Python [doc_001] is great [doc_002]."
 
-        response = OutputParser.parse(text)
+        documents = [
+            {"id": "doc_001", "title": "Python Guide", "url": "https://example.com/python"},
+            {"id": "doc_002", "title": "ML Guide", "url": "https://example.com/ml"},
+        ]
 
-        # Should extract citations from [xxx] format
+        response = OutputParser.parse(text, documents)
+
         doc_ids = {c.doc_id for c in response.citations}
-        assert "doc_001" in doc_ids or len(response.citations) >= 0
-        # Fallback may or may not find citations depending on regex
+        assert doc_ids == {"doc_001", "doc_002"}
+        assert {c.title for c in response.citations} == {"Python Guide", "ML Guide"}
 
 
 class TestResponseValidation:
@@ -269,6 +335,43 @@ class TestFallbackParsing:
         # Should limit to 10
         assert len(response.citations) <= 10
 
+    def test_fallback_enriches_citations_with_documents(self):
+        """Should enrich fallback citations with document metadata."""
+        text = "Relevant context [doc_001] and supporting evidence [doc_002]."
+        documents = [
+            {
+                "id": "doc_001",
+                "title": "Python Guide",
+                "url": "https://example.com/python",
+                "source": "docs",
+            },
+            {
+                "id": "doc_002",
+                "title": "ML Guide",
+                "url": "https://example.com/ml",
+                "source": "docs",
+            },
+        ]
+
+        response = OutputParser._fallback_parse(text, documents)
+
+        assert len(response.citations) == 2
+        assert {c.doc_id for c in response.citations} == {"doc_001", "doc_002"}
+        assert {c.source for c in response.citations} == {"docs"}
+
+    def test_citations_from_ids_validates_against_documents(self):
+        """Should convert citation IDs to enriched Citation objects."""
+        citation_ids = ["doc_001", "doc_fake", "doc_002"]
+        documents = [
+            {"id": "doc_001", "title": "Python Guide", "url": "https://example.com/python"},
+            {"id": "doc_002", "title": "ML Guide", "url": "https://example.com/ml"},
+        ]
+
+        citations = OutputParser._citations_from_ids(citation_ids, documents)
+
+        assert len(citations) == 2
+        assert {c.doc_id for c in citations} == {"doc_001", "doc_002"}
+
 
 class TestOutputParserIntegration:
     """Integration tests for output parser."""
@@ -279,16 +382,24 @@ class TestOutputParserIntegration:
         llm_output = '''```json
 {
     'answer': "Python is a programing language used for AI [doc_001].",
-    'citations': [
-        {'doc_id': 'doc_001', 'title': 'Python Guide',}
-    ]
+    'citations': ['doc_001']
 }
 ```'''
 
-        response = OutputParser.parse(llm_output)
+        documents = [
+            {
+                "id": "doc_001",
+                "title": "Python Guide",
+                "url": "https://example.com/python",
+                "source": "docs",
+            }
+        ]
+
+        response = OutputParser.parse(llm_output, documents)
 
         assert len(response.answer) > 0
         assert isinstance(response.citations, list)
+        assert response.citations[0].title == "Python Guide"
 
     def test_parser_never_fails(self):
         """Parser should never raise an exception."""

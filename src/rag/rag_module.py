@@ -157,10 +157,11 @@ class RAGModule:
             # Step 3: Parse output to structured format
             parse_start = time.time()
             try:
-                rag_response = self._parse_response(raw_response)
+                # Pass documents to parser for citation enrichment
+                rag_response = self._parse_response(raw_response, documents)
             except Exception as e:
                 logger.warning(f"Response parsing error: {e}. Using fallback parser.")
-                rag_response = self.parser.parse(raw_response)
+                rag_response = self.parser.parse(raw_response, documents)
 
             parse_time = time.time() - parse_start
 
@@ -212,12 +213,13 @@ class RAGModule:
                 citations=[],
             )
 
-    def _parse_response(self, raw_response: str) -> RAGResponse:
+    def _parse_response(self, raw_response: str, documents: Optional[List[Dict]] = None) -> RAGResponse:
         """
         Parse raw LLM response using OutputParser.
 
         Args:
             raw_response: Raw text from LLM
+            documents: Retrieved documents for citation enrichment in fallback mode
 
         Returns:
             Parsed RAGResponse
@@ -225,7 +227,7 @@ class RAGModule:
         Raises:
             Exception: If parsing fails completely
         """
-        return self.parser.parse(raw_response)
+        return self.parser.parse(raw_response, documents)
 
     def switch_template(self, template_type: str) -> None:
         """
