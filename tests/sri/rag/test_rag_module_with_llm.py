@@ -33,6 +33,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+class FakePipeline:
+    """Simple fake retrieval pipeline for integration tests."""
+
+    def __init__(self, results: List[Dict]):
+        self.results = results
+        self.calls: List[Dict] = []
+
+    def search(self, query: str, top_k: int = 10) -> List[Dict]:
+        self.calls.append({"query": query, "top_k": top_k})
+        return self.results
+
+
 class TestRAGIntegrationComprehensive:
     """Comprehensive RAG module integration test suite."""
 
@@ -44,6 +56,16 @@ class TestRAGIntegrationComprehensive:
         
         provider = OllamaProvider(model="llama3.2:latest", timeout=120)
         rag = RAGModule(provider, template_type="domain_specific")
+
+        original_generate = provider.generate
+
+        def logged_generate(prompt: str, **kwargs):
+            logger.info("=== LLM PROMPT START ===\n%s\n=== LLM PROMPT END ===", prompt)
+            response = original_generate(prompt=prompt, **kwargs)
+            logger.info("=== LLM RESPONSE START ===\n%s\n=== LLM RESPONSE END ===", response)
+            return response
+
+        provider.generate = logged_generate
         yield rag
 
     @pytest.fixture(scope="class")
@@ -78,6 +100,26 @@ class TestRAGIntegrationComprehensive:
                           "collections based on user queries. RAG (Retrieval-Augmented Generation) "
                           "combines document retrieval with language model generation."
             }
+        ]
+
+    @pytest.fixture(scope="class")
+    def pipeline_results(self):
+        """Sample retrieval records returned by the fake pipeline."""
+        return [
+            {
+                "doc_id": "doc_python",
+                "title": "Python Programming",
+                "snippet": "Python is used for web development, data science, and machine learning.",
+                "url": "https://example.com/python",
+                "score": 0.93,
+            },
+            {
+                "doc_id": "doc_ml",
+                "title": "Machine Learning with Python",
+                "snippet": "Common Python ML libraries include scikit-learn, TensorFlow, and PyTorch.",
+                "url": "https://example.com/ml",
+                "score": 0.89,
+            },
         ]
 
     # ========== CORE FUNCTIONALITY TESTS ==========
@@ -138,6 +180,35 @@ class TestRAGIntegrationComprehensive:
         logger.info(f"✅ RAG generation successful in {elapsed:.2f}s "
                    f"({len(response.answer)} chars, {len(response.citations)} citations)")
         logger.info(f"\nResponse: {response.answer}")
+
+    def test_03b_pipeline_auto_retrieval_without_documents(self, pipeline_results):
+        """TEST 03B: Verify pipeline retrieval path when no documents are passed."""
+        from src.rag.llm_provider import OllamaProvider
+        from src.rag.rag_module import RAGModule
+
+        provider = OllamaProvider(model="llama3.2:latest", timeout=120)
+        assert provider.is_available(), "Ollama provider should be available"
+
+        original_generate = provider.generate
+
+        def logged_generate(prompt: str, **kwargs):
+            logger.info("=== LLM PROMPT START ===\n%s\n=== LLM PROMPT END ===", prompt)
+            response = original_generate(prompt=prompt, **kwargs)
+            logger.info("=== LLM RESPONSE START ===\n%s\n=== LLM RESPONSE END ===", response)
+            return response
+
+        provider.generate = logged_generate
+        fake_pipeline = FakePipeline(results=pipeline_results)
+        rag = RAGModule(provider, template_type="domain_specific", pipeline=fake_pipeline)
+
+        response = rag.generate("What are common Python machine learning libraries?", documents=None, max_tokens=220)
+
+        assert len(fake_pipeline.calls) == 1, "Pipeline should be called once"
+        assert fake_pipeline.calls[0]["top_k"] == 10, "Pipeline should use top_k=10"
+        assert response is not None
+        assert len(response.answer) > 0
+
+        logger.info(f"✅ Auto-retrieval with pipeline succeeded ({len(response.answer)} chars)")
 
     def test_04_citation_validation_against_documents(self, rag_module, sample_documents):
         """TEST 04: Verify citations are accurately linked to source documents."""

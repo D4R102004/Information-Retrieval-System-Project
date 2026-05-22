@@ -12,10 +12,14 @@ Tests cover:
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 import time
+import logging
 
 from src.rag.rag_module import RAGModule
 from src.rag.llm_provider import LLMProvider
 from src.rag.output_parser import RAGResponse, Citation
+
+
+logger = logging.getLogger(__name__)
 
 
 class MockLLMProvider(LLMProvider):
@@ -27,6 +31,8 @@ class MockLLMProvider(LLMProvider):
 
     def generate(self, prompt: str, **kwargs) -> str:
         self.generation_calls += 1
+        logger.info("=== LLM PROMPT START ===\n%s\n=== LLM PROMPT END ===", prompt)
+        logger.info("=== LLM RESPONSE START ===\n%s\n=== LLM RESPONSE END ===", self.response)
         return self.response
 
     def is_available(self) -> bool:
@@ -34,6 +40,18 @@ class MockLLMProvider(LLMProvider):
 
     def get_metadata(self) -> dict:
         return {"provider": "Mock", "model": "test-model"}
+
+
+class FakePipeline:
+    """Simple fake pipeline for testing retrieval integration."""
+
+    def __init__(self, results):
+        self.results = results
+        self.calls = []
+
+    def search(self, query: str, top_k: int = 10):
+        self.calls.append({"query": query, "top_k": top_k})
+        return self.results
 
 
 class TestRAGModuleInitialization:
@@ -260,6 +278,102 @@ class TestErrorHandling:
             response = rag.generate("Query")
 
             assert isinstance(response, RAGResponse)
+
+
+class TestRAGPipelineIntegrationWithoutLLM:
+    """Validate pipeline retrieval behavior using mock LLM responses."""
+
+    def test_generate_without_documents_uses_pipeline(self):
+        """Should retrieve documents via pipeline when documents argument is omitted."""
+        llm = MockLLMProvider(
+            response='{"answer":"Pipeline context answer [doc_pipeline].","citations":["doc_pipeline"]}'
+        )
+        pipeline = FakePipeline(
+            results=[
+                {
+                    "doc_id": "doc_pipeline",
+                    "title": "Pipeline Document",
+                    "snippet": "Snippet retrieved from index.",
+                    "url": "https://example.com/pipeline",
+                    "score": 0.91,
+                }
+            ]
+        )
+        rag = RAGModule(llm, pipeline=pipeline)
+
+        response = rag.generate("Use pipeline retrieval path")
+
+        assert isinstance(response, RAGResponse)
+        assert len(pipeline.calls) == 1
+        assert pipeline.calls[0]["query"] == "Use pipeline retrieval path"
+        assert pipeline.calls[0]["top_k"] == 10
+        assert len(response.answer) > 0
+
+    def test_generate_with_documents_skips_pipeline(self):
+        """Should not call pipeline when documents are explicitly provided."""
+        llm = MockLLMProvider(
+            response='{"answer":"Manual docs answer [doc_manual].","citations":["doc_manual"]}'
+        )
+        pipeline = FakePipeline(
+            results=[
+                {
+                    "doc_id": "doc_unused",
+                    "title": "Unused",
+                    "snippet": "Unused snippet",
+                    "url": "https://example.com/unused",
+                    "score": 0.5,
+                }
+            ]
+        )
+        rag = RAGModule(llm, pipeline=pipeline)
+
+        documents = [{"id": "doc_manual", "title": "Manual", "content": "Manual content"}]
+        response = rag.generate("Use manual docs", documents=documents)
+
+        assert isinstance(response, RAGResponse)
+        assert len(pipeline.calls) == 0
+
+    def test_generate_pipeline_failure_falls_back_to_generation(self):
+        """Should continue generation when retrieval pipeline fails."""
+
+        class FailingPipeline:
+            def search(self, query: str, top_k: int = 10):
+                raise RuntimeError("Pipeline unavailable")
+
+        llm = MockLLMProvider(response="Fallback answer without retrieved documents.")
+        rag = RAGModule(llm, pipeline=FailingPipeline())
+
+        response = rag.generate("Fallback when retrieval fails")
+
+        assert isinstance(response, RAGResponse)
+        assert len(response.answer) > 0
+
+    def test_logs_full_prompt_and_response_in_console(self, caplog):
+        """Should log complete prompt and response for observability."""
+        caplog.set_level(logging.INFO)
+
+        llm = MockLLMProvider(
+            response='{"answer":"Observability check [doc_obs].","citations":["doc_obs"]}'
+        )
+        pipeline = FakePipeline(
+            results=[
+                {
+                    "doc_id": "doc_obs",
+                    "title": "Observability",
+                    "snippet": "Prompt and response should be visible in logs.",
+                    "url": "https://example.com/obs",
+                    "score": 0.99,
+                }
+            ]
+        )
+        rag = RAGModule(llm, pipeline=pipeline)
+
+        rag.generate("Log full prompt and response")
+
+        assert "=== LLM PROMPT START ===" in caplog.text
+        assert "=== LLM PROMPT END ===" in caplog.text
+        assert "=== LLM RESPONSE START ===" in caplog.text
+        assert "=== LLM RESPONSE END ===" in caplog.text
 
 
 class TestRAGModuleIntegration:
