@@ -5,15 +5,22 @@ Centralizes all RAG configuration parameters.
 Supports environment variables for production deployment.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 
-class RAGConfig(BaseSettings):
+class RAGConfig(BaseModel):
     """RAG module configuration from environment variables."""
+
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
+    )
 
     # LLM Configuration
     ollama_model: str = "llama3.2:latest"
@@ -29,13 +36,6 @@ class RAGConfig(BaseSettings):
 
     # Logging
     rag_log_level: str = "INFO"
-
-    class Config:
-        """Pydantic settings configuration."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
 
     def validate_template(self) -> None:
         """Validate that template is valid."""

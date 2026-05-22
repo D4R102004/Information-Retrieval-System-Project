@@ -8,7 +8,7 @@ Includes JSON repair mechanisms to handle imperfect LLM output.
 import json
 import re
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -33,10 +33,8 @@ class RAGResponse(BaseModel):
         default_factory=list, description="Source citations"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "answer": "Python is widely used for machine learning...",
                 "citations": [
@@ -51,6 +49,7 @@ class RAGResponse(BaseModel):
                 ],
             }
         }
+    )
 
 
 class OutputParser:
@@ -126,7 +125,7 @@ class OutputParser:
             response = RAGResponse(**data)
             logger.info("Successfully parsed output as JSON")
             return response
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
             logger.debug(f"Direct parsing failed: {e}")
 
         # Attempt 2: Repair and retry
@@ -136,7 +135,7 @@ class OutputParser:
             response = RAGResponse(**data)
             logger.info("Successfully parsed output after repair")
             return response
-        except (json.JSONDecodeError, ValueError) as e:
+        except (json.JSONDecodeError, ValueError, TypeError) as e:
             logger.debug(f"Repair parsing failed: {e}")
 
         # Attempt 3: Fallback extraction
