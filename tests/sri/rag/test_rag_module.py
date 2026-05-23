@@ -10,13 +10,13 @@ Tests cover:
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-import time
+from unittest.mock import patch
+import json
 import logging
 
 from src.rag.rag_module import RAGModule
 from src.rag.llm_provider import LLMProvider
-from src.rag.output_parser import RAGResponse, Citation
+from src.rag.output_parser import RAGResponse
 
 
 logger = logging.getLogger(__name__)
@@ -426,7 +426,3 @@ class TestRAGModuleIntegration:
 
         assert isinstance(response1, RAGResponse)
         assert isinstance(response2, RAGResponse)
-
-
-# Import json for test
-import json

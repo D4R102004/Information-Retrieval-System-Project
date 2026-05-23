@@ -13,7 +13,6 @@ from .llm_provider import LLMProvider
 from .prompt_templates import PromptTemplateFactory
 from .citations import CitationExtractor
 from .output_parser import OutputParser, RAGResponse
-from .config import config
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,6 @@ class RAGModule:
         self,
         llm: LLMProvider,
         template_type: str = "domain_specific",
-        citation_extractor: Optional[CitationExtractor] = None,
         parser: Optional[OutputParser] = None,
         pipeline=None,
     ):
@@ -45,7 +43,6 @@ class RAGModule:
             llm: LLMProvider implementation (e.g., OllamaProvider)
             template_type: Prompt template strategy
                 Options: "basic", "domain_specific", "chain_of_thought"
-            citation_extractor: Custom CitationExtractor (optional)
             parser: Custom OutputParser (optional)
             pipeline: SRIPipeline instance for automatic document retrieval (optional)
                 When provided, enables autonomous retrieval without explicit documents
@@ -57,7 +54,6 @@ class RAGModule:
         """
         self.llm = llm
         self.parser = parser or OutputParser()
-        self.citation_extractor = citation_extractor or CitationExtractor()
         self.pipeline = pipeline
 
         # Create prompt template
@@ -165,25 +161,14 @@ class RAGModule:
 
             parse_time = time.time() - parse_start
 
-            # Step 4: Extract and enrich citations
+            # Step 4: Recover citations from answer text if parser returned none
             citations_start = time.time()
-            citations = rag_response.citations
-            if rag_response.answer and documents:
+            if not rag_response.citations and rag_response.answer and documents:
                 citation_ids = CitationExtractor.extract_citations(
                     rag_response.answer, documents
                 )
-
-                enriched_citations = CitationExtractor.enrich_citations(
-                    citation_ids, documents
-                )
-
-                citations = enriched_citations
-
-            # Create new RAGResponse with updated citations
-            rag_response = RAGResponse(
-                answer=rag_response.answer,
-                citations=citations
-            )
+                recovered_citations = CitationExtractor.citations_from_ids(citation_ids, documents)
+                rag_response = RAGResponse(answer=rag_response.answer, citations=recovered_citations)
 
             citations_time = time.time() - citations_start
 

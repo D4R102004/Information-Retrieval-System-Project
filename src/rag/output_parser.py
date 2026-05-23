@@ -11,19 +11,11 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 import logging
 
+from .citations import CitationExtractor, Citation
+
 logger = logging.getLogger(__name__)
 CITATION_LIMIT = 10
 RESPONSE_CHAR_LIMIT = 1000
-
-class Citation(BaseModel):
-    """Citation object linking to source document."""
-
-    doc_id: str = Field(..., description="Document identifier")
-    title: str = Field(..., description="Document title")
-    url: Optional[str] = Field(None, description="Document URL")
-    snippet: Optional[str] = Field(None, description="Relevant excerpt")
-    source: Optional[str] = Field(None, description="Data source")
-    score: Optional[float] = Field(None, ge=0.0, le=1.0, description="Relevance score")
 
 
 class RAGResponse(BaseModel):
@@ -55,67 +47,6 @@ class RAGResponse(BaseModel):
 
 class OutputParser:
     """Parse and repair LLM output with multiple fallback strategies."""
-
-    @staticmethod
-    def _citations_from_ids(
-        citation_ids: List[str], documents: Optional[List[dict]] = None
-    ) -> List[Citation]:
-        """
-        Convert citation ID strings to enriched Citation objects.
-
-        Handles both cases:
-        - With documents: Validates and enriches with metadata
-        - Without documents: Creates minimal Citation objects
-
-        Args:
-            citation_ids: List of document IDs from LLM
-            documents: Optional documents for validation and enrichment
-
-        Returns:
-            List of enriched Citation objects
-        """
-        if not documents:
-            # No documents - create minimal Citations from IDs
-            return [
-                Citation(doc_id=cid, title=f"Document {cid}", source="extracted")
-                for cid in citation_ids
-            ]
-
-        # Build document lookup
-        doc_map = {doc.get("id"): doc for doc in documents if doc.get("id")}
-
-        citations = []
-
-        for cid in citation_ids:
-            if cid not in doc_map:
-                # Citation hallucinated
-                logger.warning(
-                    f"Hallucinated citation detected: [{cid}] not in document set. "
-                    f"Available: {list(doc_map.keys())}"
-                )
-                continue
-
-            # Document exists - create enriched Citation
-            doc = doc_map[cid]
-            citations.append(
-                Citation(
-                    doc_id=cid,
-                    title=doc.get("title", "Untitled"),
-                    url=doc.get("url"),
-                    snippet=doc.get("snippet"),
-                    source=doc.get("source", "retrieved"),
-                    score=doc.get("score"),
-                )
-            )
-
-        if len(citations) < len(citation_ids):
-            filtered_out = len(citation_ids) - len(citations)
-            logger.info(
-                f"Filtered out {filtered_out} hallucinated citations. "
-                f"Valid: {len(citations)}/{len(citation_ids)}"
-            )
-
-        return citations
 
     @staticmethod
     def repair_json(text: str) -> str:
@@ -198,7 +129,7 @@ class OutputParser:
                 response = RAGResponse(**data)
             else:
                 # String IDs from LLM - convert to Citation objects
-                citations = cls._citations_from_ids(citation_ids, documents)
+                citations = CitationExtractor.citations_from_ids(citation_ids, documents)
                 response = RAGResponse(answer=answer, citations=citations)
             
             logger.info(f"Successfully parsed output as JSON with {len(response.citations)} citations")
@@ -221,7 +152,7 @@ class OutputParser:
                 response = RAGResponse(**data)
             else:
                 # String IDs from LLM - convert to Citation objects
-                citations = cls._citations_from_ids(citation_ids, documents)
+                citations = CitationExtractor.citations_from_ids(citation_ids, documents)
                 response = RAGResponse(answer=answer, citations=citations)
             
             logger.info(f"Successfully parsed output after repair with {len(response.citations)} citations")
@@ -268,7 +199,7 @@ class OutputParser:
         citation_ids = list(dict.fromkeys(citation_ids))[:CITATION_LIMIT]
 
         # Convert IDs to enriched Citation objects
-        citations = OutputParser._citations_from_ids(citation_ids, documents)
+        citations = CitationExtractor.citations_from_ids(citation_ids, documents)
 
         logger.info(
             f"Fallback extraction: answer ({len(answer)} chars), "

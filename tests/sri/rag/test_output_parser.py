@@ -19,7 +19,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.rag.output_parser import OutputParser, Citation, RAGResponse
+from src.rag.output_parser import OutputParser, RAGResponse
+from src.rag.citations import Citation, CitationExtractor
 
 
 class TestCitationModel:
@@ -367,7 +368,7 @@ class TestFallbackParsing:
             {"id": "doc_002", "title": "ML Guide", "url": "https://example.com/ml"},
         ]
 
-        citations = OutputParser._citations_from_ids(citation_ids, documents)
+        citations = CitationExtractor.citations_from_ids(citation_ids, documents)
 
         assert len(citations) == 2
         assert {c.doc_id for c in citations} == {"doc_001", "doc_002"}

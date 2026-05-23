@@ -8,7 +8,6 @@ Tests cover:
 - Handling invalid citations
 """
 
-import pytest
 from src.rag.citations import CitationExtractor
 
 
@@ -117,11 +116,11 @@ class TestCitationEnrichment:
         enriched = CitationExtractor.enrich_citations(citations, documents)
 
         assert len(enriched) == 1
-        assert enriched[0]["doc_id"] == "doc_001"
-        assert enriched[0]["title"] == "Python Guide"
-        assert enriched[0]["url"] == "https://example.com/python"
-        assert enriched[0]["source"] == "tutorial"
-        assert len(enriched[0]["snippet"]) > 0
+        assert enriched[0].doc_id == "doc_001"
+        assert enriched[0].title == "Python Guide"
+        assert enriched[0].url == "https://example.com/python"
+        assert enriched[0].source == "tutorial"
+        assert len(enriched[0].snippet) > 0
 
     def test_enrich_multiple_citations(self):
         """Should enrich multiple citations."""
@@ -134,8 +133,8 @@ class TestCitationEnrichment:
         enriched = CitationExtractor.enrich_citations(citations, documents)
 
         assert len(enriched) == 2
-        assert enriched[0]["title"] == "Doc1"
-        assert enriched[1]["title"] == "Doc2"
+        assert enriched[0].title == "Doc1"
+        assert enriched[1].title == "Doc2"
 
     def test_enrich_creates_snippet(self):
         """Should create snippet from content."""
@@ -151,7 +150,7 @@ class TestCitationEnrichment:
 
         enriched = CitationExtractor.enrich_citations(citations, documents)
 
-        snippet = enriched[0]["snippet"]
+        snippet = enriched[0].snippet
         assert len(snippet) <= 200  # Snippet truncated to 200 chars
 
     def test_enrich_missing_fields(self):
@@ -167,9 +166,9 @@ class TestCitationEnrichment:
 
         enriched = CitationExtractor.enrich_citations(citations, documents)
 
-        assert enriched[0]["title"] == "Test"
-        assert enriched[0]["url"] == ""
-        assert enriched[0]["source"] == "unknown"
+        assert enriched[0].title == "Test"
+        assert enriched[0].url == ""
+        assert enriched[0].source == "unknown"
 
     def test_enrich_optional_metadata(self):
         """Should include optional metadata if available."""
@@ -179,15 +178,15 @@ class TestCitationEnrichment:
                 "id": "doc_001",
                 "title": "Test",
                 "content": "Content",
-                "popularity": 0.95,
+                "score": 0.95,
                 "date": "2024-01-15",
             }
         ]
 
         enriched = CitationExtractor.enrich_citations(citations, documents)
 
-        assert enriched[0]["popularity"] == 0.95
-        assert enriched[0]["date"] == "2024-01-15"
+        assert enriched[0].score == 0.95
+        assert enriched[0].date == "2024-01-15"
 
     def test_enrich_invalid_citation_skipped(self):
         """Should skip citations not found in documents."""
@@ -200,7 +199,7 @@ class TestCitationEnrichment:
         enriched = CitationExtractor.enrich_citations(citations, documents)
 
         assert len(enriched) == 2
-        doc_ids = [c["doc_id"] for c in enriched]
+        doc_ids = [c.doc_id for c in enriched]
         assert "doc_001" in doc_ids
         assert "doc_002" in doc_ids
         assert "doc_invalid" not in doc_ids
@@ -292,5 +291,5 @@ class TestCitationExtractorIntegration:
         # Enrich
         enriched = CitationExtractor.enrich_citations(valid, documents)
         assert len(enriched) == 2
-        assert enriched[0]["title"] == "Python Basics"
-        assert enriched[1]["title"] == "ML Guide"
+        assert enriched[0].title == "Python Basics"
+        assert enriched[1].title == "ML Guide"

@@ -169,7 +169,8 @@ class TestPromptTemplateFactory:
 
         class CustomTemplate(PromptTemplate):
             def apply(self, query: str, documents, require_json: bool = False) -> List[str]:
-                return [f"Custom: {query}{f"\n{self.json_response}" if require_json else ""}"]
+                json_suffix = f"\n\n{self.json_response}" if require_json else ""
+                return [f"Custom: {query}{json_suffix}"]
 
         PromptTemplateFactory.register("custom", CustomTemplate)
 

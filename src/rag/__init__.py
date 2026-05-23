@@ -16,7 +16,7 @@ Example:
     from rag.llm_provider import OllamaProvider
     
     llm = OllamaProvider(model="llama3.2:latest")
-    rag = RAGModule(pipeline, llm)
+    rag = RAGModule(llm)
     response = rag.generate("How does LSI work?")
 """
 
@@ -24,8 +24,8 @@ __version__ = "0.1.0"
 
 from .llm_provider import LLMProvider, OllamaProvider
 from .prompt_templates import PromptTemplate, PromptTemplateFactory
-from .citations import CitationExtractor
-from .output_parser import OutputParser, RAGResponse, Citation
+from .citations import CitationExtractor, Citation
+from .output_parser import OutputParser, RAGResponse
 
 __all__ = [
     "LLMProvider",
