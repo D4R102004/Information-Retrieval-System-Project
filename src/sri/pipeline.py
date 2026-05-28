@@ -4,7 +4,8 @@ Pipeline Principal — SRI Tecnología y Software
 Integra todos los módulos:
   1. InvertedIndex  — indexación
   2. LSIModel       — recuperación semántica latente
-  3. VectorStore    — base de datos vectorial
+  3. VectorStore    — base de datos vectorial (ChromaDB si está disponible,
+                      backend propio como fallback automático)
   4. RankingEngine  — posicionamiento multi-señal
   5. Evaluator      — evaluación con P, R, NDCG, MRR
 
@@ -15,14 +16,17 @@ Uso rápido:
 """
 
 import os
+import json
+from typing import List, Dict, Optional
 
-from evaluation.evaluation import Evaluator
-from indexing.indexer import InvertedIndex
-from ranking.ranking import RankingEngine
-from retrieval.lsi_model import LSIModel
-from retrieval.vector_store import VectorStore
+from modules.indexer import InvertedIndex
+from modules.lsi_model import LSIModel
+from modules.vector_store import VectorStore, _CHROMA_AVAILABLE
+from modules.ranking import RankingEngine
+from modules.evaluation import Evaluator
 
-DATA_DIR = "data"
+
+DATA_DIR  = "data"
 INDEX_DIR = os.path.join(DATA_DIR, "index")
 MODEL_DIR = os.path.join(DATA_DIR, "models")
 
@@ -30,6 +34,9 @@ MODEL_DIR = os.path.join(DATA_DIR, "models")
 class SRIPipeline:
     """
     Orquestador del sistema de recuperación de información.
+
+    El vector store usa ChromaDB automáticamente si está instalado.
+    Si no está disponible, usa el backend propio sin ningún cambio de código.
     """
 
     def __init__(
@@ -40,14 +47,24 @@ class SRIPipeline:
     ):
         self.top_k = top_k
 
+        # Informa qué backend se está usando al arrancar
+        if _CHROMA_AVAILABLE:
+            print("[Pipeline] ChromaDB disponible — usando backend ChromaDB ✓")
+        else:
+            print("[Pipeline] ChromaDB no instalado — usando backend local ✓")
+
         # Módulos
         self.indexer = InvertedIndex(use_stemming=True)
-        self.lsi = LSIModel(n_components=lsi_components)
+        self.lsi     = LSIModel(n_components=lsi_components)
+
+        # VectorStore: usa ChromaDB si está instalado, backend propio si no
         self.vstore = VectorStore(
             collection_name="tech_software",
             persist_dir=INDEX_DIR,
+            use_chromadb=_CHROMA_AVAILABLE,   # ← automático, no requiere cambio manual
         )
-        self.ranker = RankingEngine()
+
+        self.ranker    = RankingEngine()
         self.evaluator = Evaluator(k_values=[1, 3, 5, 10])
 
         if load_existing:
@@ -57,7 +74,7 @@ class SRIPipeline:
     # Indexación
     # ------------------------------------------------------------------
 
-    def index(self, documents: list[dict], save: bool = True) -> None:
+    def index(self, documents: List[Dict], save: bool = True) -> None:
         """
         Indexa una lista de documentos en todos los módulos.
 
@@ -73,7 +90,7 @@ class SRIPipeline:
         # 2. LSI
         self.lsi.fit(documents)
 
-        # 3. Vector store
+        # 3. Vector store (ChromaDB o backend propio, transparente)
         self.vstore.add(documents)
 
         if save:
@@ -81,16 +98,13 @@ class SRIPipeline:
 
         # Estadísticas
         stats = self.indexer.stats()
-        print(
-            f"[Pipeline] Vocabulario: {stats['vocab_size']} términos | "
-            f"Longitud media doc: {stats['avg_doc_len']:.0f} tokens"
-        )
+        print(f"[Pipeline] Vocabulario: {stats['vocab_size']} términos | "
+              f"Longitud media doc: {stats['avg_doc_len']:.0f} tokens")
 
-    def add_document(self, doc: dict) -> None:
+    def add_document(self, doc: Dict) -> None:
         """Agrega un documento al sistema sin reentrenar LSI."""
         self.indexer.add_document(doc)
         self.vstore.add([doc])
-        # LSI requiere refitting completo si cambia el corpus
         print(f"[Pipeline] Doc '{doc.get('id')}' agregado al índice y vector store.")
 
     # ------------------------------------------------------------------
@@ -100,10 +114,10 @@ class SRIPipeline:
     def search(
         self,
         query: str,
-        top_k: int | None = None,
+        top_k: Optional[int] = None,
         use_lsi: bool = True,
         use_vector: bool = True,
-    ) -> list[dict]:
+    ) -> List[Dict]:
         """
         Recupera y rankea documentos para una consulta.
 
@@ -125,12 +139,12 @@ class SRIPipeline:
             sorted_ids = sorted(scores, key=scores.get, reverse=True)[: k * 2]
             lsi_results = [
                 {
-                    "doc_id": did,
-                    "score": scores[did] / 10,  # normalizar
-                    "title": self.indexer.doc_metadata.get(did, {}).get("title", ""),
+                    "doc_id":  did,
+                    "score":   scores[did] / 10,
+                    "title":   self.indexer.doc_metadata.get(did, {}).get("title", ""),
                     "snippet": "",
-                    "url": self.indexer.doc_metadata.get(did, {}).get("url", ""),
-                    "tags": [],
+                    "url":     self.indexer.doc_metadata.get(did, {}).get("url", ""),
+                    "tags":    [],
                 }
                 for did in sorted_ids
             ]
@@ -147,7 +161,7 @@ class SRIPipeline:
 
         return self.ranker.assign_positions(ranked)
 
-    def search_ids(self, query: str, top_k: int | None = None) -> list[str]:
+    def search_ids(self, query: str, top_k: Optional[int] = None) -> List[str]:
         """Versión simplificada que devuelve solo IDs (para evaluación)."""
         results = self.search(query, top_k=top_k)
         return [r["doc_id"] for r in results]
@@ -159,11 +173,9 @@ class SRIPipeline:
     def evaluate(
         self,
         test_queries_path: str,
-        output_path: str | None = None,
-    ) -> dict:
-        """
-        Evalúa el sistema con un archivo de consultas de prueba.
-        """
+        output_path: Optional[str] = None,
+    ) -> Dict:
+        """Evalúa el sistema con un archivo de consultas de prueba."""
         test_queries = Evaluator.load_test_queries(test_queries_path)
         results = self.evaluator.evaluate_all(
             test_queries=test_queries,
@@ -182,11 +194,15 @@ class SRIPipeline:
         os.makedirs(MODEL_DIR, exist_ok=True)
         self.indexer.save(INDEX_DIR)
         self.lsi.save(MODEL_DIR)
-        self.vstore.save()
+        # ChromaDB persiste solo; el backend propio guarda JSON
+        if not _CHROMA_AVAILABLE:
+            self.vstore.save()
         print("[Pipeline] Todos los módulos guardados.")
 
     def _load_all(self) -> None:
         self.indexer.load(INDEX_DIR)
         if os.path.exists(os.path.join(MODEL_DIR, "lsi_model.pkl")):
             self.lsi.load(MODEL_DIR)
-        self.vstore.load()
+        # ChromaDB carga solo al inicializar; el backend propio necesita load()
+        if not _CHROMA_AVAILABLE:
+            self.vstore.load()
