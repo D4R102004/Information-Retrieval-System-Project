@@ -49,3 +49,4 @@ data/processed/
 
 # Logs
 wget-log
+build_docker.py
