@@ -1,0 +1,33 @@
+services:
+
+  # Runs the web crawler and saves documents to data/raw/
+  crawler:
+    build: .
+    command: python -m sri.crawler --max-articles 500
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app/src
+
+  # Runs the full integration demo (index + search + evaluate)
+  demo:
+    build: .
+    command: python src/main.py
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app/src
+
+  # Placeholder for Sebastián's interface (Gradio/Streamlit)
+  # Uncomment and update 'command' when the interface module is ready
+  # app:
+  #   build: .
+  #   command: python src/sri/interface/app.py
+  #   ports:
+  #     - "7860:7860"
+  #   volumes:
+  #     - ./data:/app/data
+  #   environment:
+  #     - PYTHONPATH=/app/src
+  #   depends_on:
+  #     - crawler
