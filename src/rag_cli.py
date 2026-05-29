@@ -63,9 +63,9 @@ def to_rag_documents(results: List[Dict]) -> List[Dict]:
     """Convert pipeline search results into RAG document format."""
     return [
         {
-            "id": item.get("doc_id"),
+            "id": item.get("doc_id") or item.get("id"),
             "title": item.get("title", "Untitled"),
-            "content": item.get("snippet", ""),
+            "content": item.get("content", ""),
             "url": item.get("url", ""),
             "score": item.get("score"),
         }

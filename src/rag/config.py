@@ -33,6 +33,10 @@ class RAGConfig(BaseModel):
     rag_temperature: float = 0.7
     rag_max_tokens: int = 1024
     rag_citation_threshold: float = 0.0
+    max_snippet_length: int = 200
+    max_cites: int = 10
+    response_char_limit: int = 2000
+    max_doc_content_length: int = 1000
 
     # Logging
     rag_log_level: str = "INFO"

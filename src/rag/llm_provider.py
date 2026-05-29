@@ -162,6 +162,8 @@ class OllamaProvider(LLMProvider):
             "stream": False,
         }
 
+        logger.debug(f"Prompt:\n{prompt}\n")
+
         if max_tokens:
             payload["num_predict"] = max_tokens
 
@@ -176,6 +178,7 @@ class OllamaProvider(LLMProvider):
             response.raise_for_status()
             result = response.json().get("response", "").strip()
             logger.debug(f"Generated response ({len(result)} chars)")
+            logger.debug(f"Response:\n{result}\n")
             return result
         except requests.exceptions.Timeout:
             raise RuntimeError(

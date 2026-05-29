@@ -9,9 +9,9 @@ import re
 from typing import List, Dict, Optional
 from pydantic import BaseModel, Field, ConfigDict
 import logging
+from .config import config as rag_config
 
 logger = logging.getLogger(__name__)
-
 
 class Citation(BaseModel):
     """Citation object linking to source document."""
@@ -52,7 +52,7 @@ class CitationExtractor:
         if not documents:
             return unique_ids
 
-        valid_doc_ids = {doc.get("id") for doc in documents if doc.get("id")}
+        valid_doc_ids = {doc.get("id") or doc.get("doc_id") for doc in documents if doc.get("id") or doc.get("doc_id")}
         valid_citations = [cid for cid in unique_ids if cid in valid_doc_ids]
 
         logger.debug(
@@ -161,7 +161,7 @@ class CitationExtractor:
                 continue
 
             doc = doc_map[citation_id]
-            snippet = doc.get("snippet") or doc.get("content", "")[:200]
+            snippet = doc.get("content", "")[:rag_config.max_snippet_length]
             enriched_citation = {
                 "doc_id": citation_id,
                 "title": doc.get("title", "Unknown"),

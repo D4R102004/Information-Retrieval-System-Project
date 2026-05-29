@@ -7,23 +7,25 @@ Includes JSON repair mechanisms to handle imperfect LLM output.
 
 import json
 import re
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 import logging
 
 from .citations import CitationExtractor, Citation
+from .config import config as rag_config
 
 logger = logging.getLogger(__name__)
-CITATION_LIMIT = 10
-RESPONSE_CHAR_LIMIT = 1000
-
 
 class RAGResponse(BaseModel):
-    """Structured RAG response."""
+    """Structured RAG response with metadata."""
 
     answer: str = Field(..., description="Generated answer text")
     citations: List[Citation] = Field(
         default_factory=list, description="Source citations"
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Execution metadata (documents used, sources, timing, etc.)",
     )
 
     model_config = ConfigDict(
@@ -40,6 +42,15 @@ class RAGResponse(BaseModel):
                         "score": 0.95,
                     }
                 ],
+                "metadata": {
+                    "auto_crawled": False,
+                    "total_documents_used": 3,
+                    "local_documents": 3,
+                    "web_documents": 0,
+                    "insufficiency_detected": False,
+                    "insufficiency_reasons": [],
+                    "generation_time_seconds": 2.5,
+                },
             }
         }
     )
@@ -189,14 +200,14 @@ class OutputParser:
         if answer_match:
             answer = answer_match.group(1)
         else:
-            # Use first RESPONSE_CHAR_LIMIT chars as answer
-            answer = text[:RESPONSE_CHAR_LIMIT]
+            # Use first rag_config.response_char_limit chars as answer
+            answer = text[:rag_config.response_char_limit]
 
         # Extract citation IDs from [doc_id] patterns
         citation_ids = re.findall(r"\[([^\]]+)\]", text)
         
-        # Remove duplicates while preserving order
-        citation_ids = list(dict.fromkeys(citation_ids))[:CITATION_LIMIT]
+        # Remove duplicates and limit cites while preserving order
+        citation_ids = list(dict.fromkeys(citation_ids))[:rag_config.max_cites]
 
         # Convert IDs to enriched Citation objects
         citations = CitationExtractor.citations_from_ids(citation_ids, documents)

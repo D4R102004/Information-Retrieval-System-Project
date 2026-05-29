@@ -106,25 +106,26 @@ class RAGModule:
         if documents is None:
             if self.pipeline:
                 try:
-                    raw_results = self.pipeline.search(query, top_k=10)
-                    # Transform pipeline results to RAG document format
-                    documents = [
-                        {
-                            "id": result.get("doc_id"),
-                            "title": result.get("title", "Untitled"),
-                            "content": result.get("snippet", ""),
-                            "url": result.get("url"),
-                            "score": result.get("score"),
-                        }
-                        for result in raw_results
-                    ]
-                    logger.info(f"Retrieved {len(documents)} documents via SRIPipeline")
+                    documents = self.pipeline.search(query, top_k=10)
+                    logger.info(f"Retrieved {len(documents) if documents else 0} documents via SRIPipeline")
                 except Exception as e:
                     logger.warning(f"Pipeline retrieval failed: {e}. Using pure generation mode.")
                     documents = []
             else:
                 documents = []
                 logger.debug("No documents provided and no pipeline - using pure generation mode")
+
+        # Transform pipeline results to RAG document format
+        documents = [
+            {
+                "id": result.get("doc_id"),
+                "title": result.get("title", "Untitled"),
+                "content": result.get("content", ""),
+                "url": result.get("url"),
+                "score": result.get("score"),
+            }
+            for result in (documents if documents else [])
+        ]
 
         logger.info(
             f"Generating answer for query: '{query[:60]}...' "
