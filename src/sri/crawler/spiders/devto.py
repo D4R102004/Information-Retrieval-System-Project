@@ -10,6 +10,7 @@ import uuid
 
 from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
+from sri.crawler.settings import CrawlerSettings
 
 
 class DevToSpider(ApiSpider):
@@ -20,21 +21,23 @@ class DevToSpider(ApiSpider):
 
     Attributes:
         max_articles: Maximum number of articles to fetch in total.
-        per_page: Number of articles to request per API call (max 100).
+        per_page: Number of articles to request per API call.
     """
 
-    def __init__(self, max_articles: int = 500, per_page: int = 100) -> None:
+    def __init__(
+        self,
+        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+        per_page: int = CrawlerSettings.PER_PAGE,
+    ) -> None:
         """Initialise the spider with fetch limits.
 
         Args:
             max_articles: Maximum number of articles to fetch in total.
-            per_page: Number of articles to request per API call (max 100).
+            per_page: Number of articles to request per API call.
         """
-        super().__init__(
-            max_articles=max_articles
-        )  # Initialise the HTTP client from ApiSpider
+        super().__init__(max_articles=max_articles)
 
-        self.per_page = min(per_page, 100)  # Dev.to API max per
+        self.per_page = min(per_page, CrawlerSettings.PER_PAGE)
 
     def _fetch_page(self, tag: str, page: int) -> list[dict]:
         """Fetch a single page of articles from the Dev.to API.
@@ -47,7 +50,8 @@ class DevToSpider(ApiSpider):
             List of raw article dicts from the API, or empty list on error.
         """
 
-        url = "https://dev.to/api/articles"
+        url = CrawlerSettings.DEVTO_API_URL
+
         params = {
             "tag": tag,
             "per_page": self.per_page,
@@ -55,8 +59,10 @@ class DevToSpider(ApiSpider):
         }
 
         result = self._get_json(url, params=params)
+
         if not isinstance(result, list):
             return []
+
         return result
 
     def _fetch_full(self, article_id: int) -> dict:
@@ -73,11 +79,13 @@ class DevToSpider(ApiSpider):
             Full article dict from the API, or empty dict on error.
         """
 
-        url = f"https://dev.to/api/articles/{article_id}"
+        url = f"{CrawlerSettings.DEVTO_API_URL}/{article_id}"
 
         result = self._get_json(url)
+
         if not isinstance(result, dict):
             return {}
+
         return result
 
     def _build_item(self, raw_article: dict) -> ArticleItem | None:
@@ -95,6 +103,7 @@ class DevToSpider(ApiSpider):
         """
 
         body = self._fetch_full(raw_article["id"])
+
         if not body:
             return None
 
@@ -117,7 +126,4 @@ class DevToSpider(ApiSpider):
             List of topic tags to search for articles.
         """
 
-        # These tags cover the technology and software domain broadly
-        tags = ["python", "software", "programming", "webdev", "javascript"]
-
-        return tags
+        return CrawlerSettings.DEVTO_TAGS

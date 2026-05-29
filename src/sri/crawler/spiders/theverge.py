@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 # Local
 from sri.crawler.base import BaseSpider
 from sri.crawler.items import ArticleItem
+from sri.crawler.settings import CrawlerSettings
 
 
 class TheVergeSpider(BaseSpider):
@@ -32,14 +33,20 @@ class TheVergeSpider(BaseSpider):
         max_articles: Maximum number of articles to fetch in total.
     """
 
-    def __init__(self, max_articles: int = 500) -> None:
+    def __init__(
+        self,
+        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+    ) -> None:
         """Initialise the spider with fetch limits.
 
         Args:
             max_articles: Maximum number of articles to fetch in total.
         """
         super().__init__(max_articles)
-        self._client = httpx.Client(timeout=10.0)
+
+        self._client = httpx.Client(
+            timeout=CrawlerSettings.HTTP_TIMEOUT,
+        )
 
     def fetch_articles(self) -> list[ArticleItem]:
         """Fetch and parse articles from The Verge Atom feed.
@@ -63,7 +70,10 @@ class TheVergeSpider(BaseSpider):
 
         collected: list[ArticleItem] = []
 
-        response = self._client.get("https://www.theverge.com/rss/index.xml")
+        response = self._client.get(
+            CrawlerSettings.THE_VERGE_FEED,
+        )
+
         soup = BeautifulSoup(response.text, "xml")
 
         entries = soup.find_all("entry")
@@ -73,6 +83,7 @@ class TheVergeSpider(BaseSpider):
                 break
 
             item = self._build_item(entry)
+
             if item is not None:
                 collected.append(item)
 
@@ -110,12 +121,15 @@ class TheVergeSpider(BaseSpider):
             return None
 
         categories = entry.find_all("category")
+
         tags = [cat.get("term", "") for cat in categories if cat.get("term")]
 
         html_content = content_tag.get_text()
 
         content_soup = BeautifulSoup(html_content, "html.parser")
+
         paragraphs = content_soup.find_all("p")
+
         content = "\n".join(p.get_text(strip=True) for p in paragraphs)
 
         article = ArticleItem()
