@@ -46,9 +46,9 @@ class SRIPipeline:
 
         # Informa qué backend se está usando al arrancar
         if _CHROMA_AVAILABLE:
-            print("[Pipeline] ChromaDB disponible — usando backend ChromaDB ✓")
+            print("[Pipeline] ChromaDB available -- using ChromaDB backend [OK]")
         else:
-            print("[Pipeline] ChromaDB no instalado — usando backend local ✓")
+            print("[Pipeline] ChromaDB not installed -- using local backend [OK]")
 
         # Módulos
         self.indexer = InvertedIndex(use_stemming=True)
@@ -138,10 +138,9 @@ class SRIPipeline:
             sorted_ids = sorted(scores, key=scores.get, reverse=True)[: k * 2]
             lsi_results = [
                 {
-                    "doc_id": did,
+                    "id": did,
                     "score": scores[did] / 10,
                     "title": self.indexer.doc_metadata.get(did, {}).get("title", ""),
-                    "snippet": "",
                     "url": self.indexer.doc_metadata.get(did, {}).get("url", ""),
                     "tags": [],
                 }
