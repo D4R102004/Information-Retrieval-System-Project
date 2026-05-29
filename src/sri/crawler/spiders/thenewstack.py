@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 # Local
 from sri.crawler.base import BaseSpider
 from sri.crawler.items import ArticleItem
+from sri.crawler.settings import CrawlerSettings
 
 
 class TheNewStackSpider(BaseSpider):
@@ -32,14 +33,21 @@ class TheNewStackSpider(BaseSpider):
     operates as a single-pass XML parser.
     """
 
-    def __init__(self, max_articles: int = 500) -> None:
+    def __init__(
+        self,
+        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+    ) -> None:
         """Initialise the spider with fetch limits.
 
         Args:
             max_articles: Maximum number of articles to fetch in total.
         """
+
         super().__init__(max_articles)
-        self._client = httpx.Client(timeout=10.0)
+
+        self._client = httpx.Client(
+            timeout=CrawlerSettings.HTTP_TIMEOUT,
+        )
 
     def fetch_articles(self) -> list[ArticleItem]:
         """Fetch and parse articles from The New Stack RSS feed.
@@ -64,7 +72,10 @@ class TheNewStackSpider(BaseSpider):
 
         collected: list[ArticleItem] = []
 
-        response = self._client.get("https://thenewstack.io/feed/")
+        response = self._client.get(
+            CrawlerSettings.THE_NEW_STACK_FEED,
+        )
+
         soup = BeautifulSoup(response.text, "xml")
 
         items = soup.find_all("item")
@@ -74,6 +85,7 @@ class TheNewStackSpider(BaseSpider):
                 break
 
             item = self._build_item(raw_item)
+
             if item is not None:
                 collected.append(item)
 
@@ -112,12 +124,18 @@ class TheNewStackSpider(BaseSpider):
             return None
 
         categories = raw_item.find_all("category")
+
         tags = [c.get_text(strip=True) for c in categories]
 
         html_content = content_tag.get_text()
 
-        content_soup = BeautifulSoup(html_content, "html.parser")
+        content_soup = BeautifulSoup(
+            html_content,
+            "html.parser",
+        )
+
         paragraphs = content_soup.find_all("p")
+
         content = "\n".join(p.get_text(strip=True) for p in paragraphs)
 
         article = ArticleItem()

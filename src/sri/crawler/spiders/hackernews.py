@@ -1,6 +1,8 @@
 """HackerNews spider — fetches technology articles from the Algolia public API.
+
 This module contains the HackerNewsSpider class that retrieves articles
 from Hacker News using their free public API, requiring no authentication.
+
 API reference: http://hn.algolia.com/api/v1/search?tags=story&query=software
 """
 
@@ -8,6 +10,7 @@ import uuid
 
 from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
+from sri.crawler.settings import CrawlerSettings
 
 
 class HackerNewsSpider(ApiSpider):
@@ -18,21 +21,25 @@ class HackerNewsSpider(ApiSpider):
 
     Attributes:
         max_articles: Maximum number of articles to fetch in total.
-        per_page: Number of articles to request per API call (max 100).
+        per_page: Number of articles to request per API call.
     """
 
     _start_page: int = 0  # Algolia uses 0-based pagination
 
-    def __init__(self, max_articles: int = 500, per_page: int = 100) -> None:
+    def __init__(
+        self,
+        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+        per_page: int = CrawlerSettings.PER_PAGE,
+    ) -> None:
         """Initialise the spider with fetch limits.
 
         Args:
             max_articles: Maximum number of articles to fetch in total.
-            per_page: Number of articles to request per API call (max 100).
+            per_page: Number of articles to request per API call.
         """
 
         super().__init__(max_articles=max_articles)
-        self.per_page = min(per_page, 100)
+        self.per_page = min(per_page, CrawlerSettings.PER_PAGE)
 
     def _search_terms(self) -> list[str]:
         """Return Algolia search queries for the technology domain.
@@ -40,7 +47,8 @@ class HackerNewsSpider(ApiSpider):
         Returns:
             List of query strings to search for articles.
         """
-        return ["software", "python", "programming", "webdev", "javascript"]
+
+        return CrawlerSettings.HN_SEARCH_TERMS
 
     def _fetch_page(self, term: str, page: int) -> list[dict]:
         """Fetch a single page of articles from the Algolia API.
@@ -53,16 +61,18 @@ class HackerNewsSpider(ApiSpider):
             List of raw article dicts from the API, or empty list on error.
         """
 
-        url = "https://hn.algolia.com/api/v1/search"
-
         params = {
-            "tags": "story",  # only fetch stories, not comments
-            "query": term,  # the search term
-            "hitsPerPage": self.per_page,  # how many per page
-            "page": page,  # which page
+            "tags": "story",
+            "query": term,
+            "hitsPerPage": self.per_page,
+            "page": page,
         }
 
-        result = self._get_json(url, params=params)
+        result = self._get_json(
+            CrawlerSettings.HN_API_URL,
+            params=params,
+        )
+
         if not isinstance(result, dict) or "hits" not in result:
             return []
 
@@ -94,7 +104,6 @@ class HackerNewsSpider(ApiSpider):
         article["content"] = raw_article.get("story_text") or raw_article.get(
             "title", ""
         )
-
         article["source"] = "hackernews"
         article["tags"] = raw_article.get("_tags", [])
 

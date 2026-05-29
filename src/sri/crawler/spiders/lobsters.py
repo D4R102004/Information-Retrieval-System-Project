@@ -15,6 +15,7 @@ from bs4 import BeautifulSoup
 # Local
 from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
+from sri.crawler.settings import CrawlerSettings
 
 
 class LobstersSpider(ApiSpider):
@@ -27,12 +28,16 @@ class LobstersSpider(ApiSpider):
         max_articles: Maximum number of articles to fetch in total.
     """
 
-    def __init__(self, max_articles: int = 500) -> None:
+    def __init__(
+        self,
+        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+    ) -> None:
         """Initialise the spider with fetch limits.
 
         Args:
             max_articles: Maximum number of articles to fetch in total.
         """
+
         super().__init__(max_articles)
 
     def _search_terms(self) -> list[str]:
@@ -44,6 +49,7 @@ class LobstersSpider(ApiSpider):
         Returns:
             List with a single empty string.
         """
+
         return [""]
 
     def _fetch_page(self, term: str, page: int) -> list[dict]:
@@ -62,9 +68,9 @@ class LobstersSpider(ApiSpider):
         """
 
         if page == 1:
-            url = "https://lobste.rs/hottest.json"
+            url = f"{CrawlerSettings.LOBSTERS_BASE_URL}" "/hottest.json"
         else:
-            url = f"https://lobste.rs/hottest/page/{page}.json"
+            url = f"{CrawlerSettings.LOBSTERS_BASE_URL}" f"/hottest/page/{page}.json"
 
         result = self._get_json(url)
 
@@ -89,6 +95,7 @@ class LobstersSpider(ApiSpider):
         """
 
         article = ArticleItem()
+
         article["id"] = str(uuid.uuid4())
         article["title"] = raw_article.get("title", "")
         article["url"] = raw_article.get("url", "")
@@ -98,11 +105,15 @@ class LobstersSpider(ApiSpider):
 
         try:
             response = self._client.get(article["url"])
+
             soup = BeautifulSoup(response.text, "html.parser")
+
             paragraphs = soup.find_all("p")
+
             article["content"] = " ".join(p.get_text(strip=True) for p in paragraphs)
+
         except Exception as error:
-            print(f"[LobstersSpider] Failed to scrape {article['url']}: {error}")
+            print(f"[LobstersSpider] Failed to scrape " f"{article['url']}: {error}")
             return None
 
         return article
