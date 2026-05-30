@@ -153,23 +153,18 @@ class RAGModule:
 
             # Step 3: Parse output to structured format
             parse_start = time.time()
-            try:
-                # Pass documents to parser for citation enrichment
-                rag_response = self._parse_response(raw_response, documents)
-            except Exception as e:
-                logger.warning(f"Response parsing error: {e}. Using fallback parser.")
-                rag_response = self.parser.parse(raw_response, documents)
-
+            # Pass documents to parser for citation enrichment
+            rag_response = self._parse_response(raw_response, documents)
+            
             parse_time = time.time() - parse_start
 
             # Step 4: Recover citations from answer text if parser returned none
             citations_start = time.time()
             if not rag_response.citations and rag_response.answer and documents:
-                citation_ids = CitationExtractor.extract_citations(
+                answer, citations = CitationExtractor.extract_citations(
                     rag_response.answer, documents
                 )
-                recovered_citations = CitationExtractor.citations_from_ids(citation_ids, documents)
-                rag_response = RAGResponse(answer=rag_response.answer, citations=recovered_citations)
+                rag_response = RAGResponse(answer=answer, citations=citations)
 
             citations_time = time.time() - citations_start
 

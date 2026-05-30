@@ -140,7 +140,7 @@ class OutputParser:
                 response = RAGResponse(**data)
             else:
                 # String IDs from LLM - convert to Citation objects
-                citations = CitationExtractor.citations_from_ids(citation_ids, documents)
+                answer, citations = CitationExtractor.citations_from_ids(answer, citation_ids, documents)
                 response = RAGResponse(answer=answer, citations=citations)
             
             logger.info(f"Successfully parsed output as JSON with {len(response.citations)} citations")
@@ -163,7 +163,7 @@ class OutputParser:
                 response = RAGResponse(**data)
             else:
                 # String IDs from LLM - convert to Citation objects
-                citations = CitationExtractor.citations_from_ids(citation_ids, documents)
+                answer, citations = CitationExtractor.citations_from_ids(answer, citation_ids, documents)
                 response = RAGResponse(answer=answer, citations=citations)
             
             logger.info(f"Successfully parsed output after repair with {len(response.citations)} citations")
@@ -203,14 +203,14 @@ class OutputParser:
             # Use first rag_config.response_char_limit chars as answer
             answer = text[:rag_config.response_char_limit]
 
-        # Extract citation IDs from [doc_id] patterns
-        citation_ids = re.findall(r"\[([^\]]+)\]", text)
+        # Extract Citations
+        answer, citations = CitationExtractor.extract_citations(answer, documents or [])
         
-        # Remove duplicates and limit cites while preserving order
-        citation_ids = list(dict.fromkeys(citation_ids))[:rag_config.max_cites]
-
-        # Convert IDs to enriched Citation objects
-        citations = CitationExtractor.citations_from_ids(citation_ids, documents)
+        # Fallback in case of exract_citations failiure.
+        if not citations and documents:
+            citation_ids = re.findall(r"\[([^\]]+)\]", text)
+            citation_ids = list(dict.fromkeys(citation_ids))[:rag_config.max_cites]
+            answer, citations = CitationExtractor.citations_from_ids(answer, citation_ids, documents)
 
         logger.info(
             f"Fallback extraction: answer ({len(answer)} chars), "
