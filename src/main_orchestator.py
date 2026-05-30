@@ -29,7 +29,7 @@ from sri.web_search.checker import SufficiencyChecker
 from sri.web_search.searcher import WebSearcher
 
 logger = logging.getLogger(__name__)
-
+MIN_DB_DOCUMENTS = 500  # Minimum documents for local search to be considered sufficient
 
 class MainOrchestator:
     """
@@ -113,7 +113,7 @@ class MainOrchestator:
 
     def load_documents_from_crawlers(
         self,
-        max_articles: int = 100,
+        max_articles: int = 1000,
         force_recrawl: bool = False
     ) -> Dict[str, Any]:
         """
@@ -258,7 +258,7 @@ class MainOrchestator:
                 logger.debug(f"Failed to check ChromaDB: {str(e)}")
 
             is_empty = vec_count == 0 and file_count == 0
-            can_search = vec_count > 0
+            can_search = vec_count > MIN_DB_DOCUMENTS
             status = 'healthy' if can_search else ('empty' if is_empty else 'degraded')
 
             return {
@@ -427,16 +427,80 @@ class MainOrchestator:
         try:
             self._log_step("query", f"Processing: {question}")
 
-            # Step 1: Check database health
+            # Step 1: Check database health and ensure minimum documents before searching.
             db_health = self.check_database_health()
-            if db_health['is_empty'] and auto_reload_empty:
-                self._log_step("query", "Database empty, auto-loading from crawlers")
-                load_result = self.load_documents_from_crawlers()
-                if load_result['success']:
-                    metadata['auto_crawled'] = True
-                    self._log_step("query", f"Auto-loaded {load_result['indexed_documents']} documents")
-                else:
-                    self._log_step("query", f"Auto-load failed: {load_result['message']}")
+            vec_count = int(db_health.get('document_count', 0))
+            file_count = int(db_health.get('file_document_count', 0))
+            raw_count = 0
+            try:
+                raw_count = int(self.crawler_caller.count_raw_documents())
+            except Exception:
+                raw_count = 0
+
+            self._log_step(
+                "query",
+                f"DB counts -> indexed:{vec_count}, consolidated_file:{file_count}, raw:{raw_count}"
+            )
+
+            # Only allow search when there are at least MIN_DB_DOCUMENTS indexed documents.
+            allowed_to_search = vec_count >= MIN_DB_DOCUMENTS
+
+            # If not enough indexed docs, attempt enrichment
+            if not allowed_to_search:
+                # Try loading from consolidated file
+                if file_count >= MIN_DB_DOCUMENTS:
+                    self._log_step("query", f"Consolidated file count: {file_count} -- loading into index")
+                    try:
+                        docs = self.crawler_caller.load_consolidated_documents()
+                        if docs:
+                            self.pipeline.index(docs)
+                            allowed_to_search = True
+                            metadata['auto_crawled'] = True
+                            self._log_step("query", f"Loaded and indexed {len(docs)} documents from documents.json")
+                    except Exception as e:
+                        logger.warning(f"Failed to index consolidated documents: {e}")
+
+                # Try consolidating raw files if present
+                if  not allowed_to_search and raw_count >= MIN_DB_DOCUMENTS:
+                    self._log_step("query", f"Raw documents count: {raw_count} -- consolidating and indexing")
+                    try:
+                        docs = self.crawler_caller.consolidate_raw_to_documents()
+                        if docs:
+                            self.crawler_caller.save_consolidated_documents(docs)  # Save for future sessions
+                            self.pipeline.index(docs)
+                            allowed_to_search = True
+                            metadata['auto_crawled'] = True
+                            self._log_step("query", f"Consolidated and indexed {len(docs)} raw documents")
+                    except Exception as e:
+                        logger.warning(f"Failed to consolidate/index raw documents: {e}")
+
+                # As a last resort, trigger crawlers if allowed
+                if not allowed_to_search and auto_reload_empty:
+                    self._log_step("query", "Below quota — triggering crawlers to obtain more documents")
+                    try:
+                        load_result = self.load_documents_from_crawlers(force_recrawl=True)
+                        if load_result.get('success') and load_result.get('indexed_documents', 0) >= MIN_DB_DOCUMENTS:
+                            allowed_to_search = True
+                            metadata['auto_crawled'] = True
+                            self._log_step("query", f"Crawlers loaded {load_result.get('indexed_documents')} documents")
+                        else:
+                            self._log_step("query", f"Crawler attempt did not reach quota: {load_result.get('message')}")
+                    except Exception as e:
+                        logger.warning(f"Crawlers failed during enrichment attempt: {e}")
+
+            db_health = self.check_database_health()
+
+            # If still not allowed, return a clear RAGResponse if DB is empty or proceed with a warning if there are some documents
+            if not allowed_to_search:
+                vec_count = int(db_health.get('document_count', 0))
+                self._log_step("query", f"Insufficient documents ({vec_count}) after enrichment attempts")
+
+                if vec_count < 1:
+                    return RAGResponse(
+                        answer="Database is empty. A search is impossible to perform",
+                        citations=[],
+                        metadata=metadata
+                    )
 
             # Step 2: Local search
             local_results = self._search_locally(question, max_results=max_local_results)
