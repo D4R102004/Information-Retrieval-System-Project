@@ -45,3 +45,13 @@ class CrawlerSettings:
     # RSS feeds
     THE_NEW_STACK_FEED: str = "https://thenewstack.io/feed/"
     THE_VERGE_FEED: str = "https://www.theverge.com/rss/index.xml"
+
+    # Database sufficiency thresholds
+    MIN_DOCUMENTS_THRESHOLD: int = 1000  # Minimum docs for "sufficient" database
+    MIN_AVG_SCORE_THRESHOLD: float = 0.5  # Minimum average score for results
+    MIN_RESULTS_FOR_QUERY: int = 3  # Minimum results before web search
+    #TODO: asses using fraction of max documents (specified in query) instead of fixed number for MIN_RESULTS_FOR_QUERY
+
+    # Auto-reload behavior
+    AUTO_CRAWL_ON_EMPTY: bool = True  # Execute crawlers if DB empty
+    AUTO_CRAWL_ON_INSUFFICIENT: bool = True  # Execute if results insufficient

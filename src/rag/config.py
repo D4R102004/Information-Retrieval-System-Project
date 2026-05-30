@@ -33,10 +33,10 @@ class RAGConfig(BaseModel):
     rag_temperature: float = 0.7
     rag_max_tokens: int = 1024
     rag_citation_threshold: float = 0.0
-    max_snippet_length: int = 200
-    max_cites: int = 10
-    response_char_limit: int = 2000
-    max_doc_content_length: int = 1000
+    max_snippet_length: int = 200 # Max chars from each document snippet in citations
+    max_cites: int = 10 # Max number of citations to include in response
+    response_char_limit: int = 2000 # Max chars in generated answer (truncated if no explicit [Answer] section)
+    max_doc_content_length: int = 1000 # Max chars of document content to include in prompt (to prevent exceeding LLM context window)
 
     # Logging
     rag_log_level: str = "INFO"
