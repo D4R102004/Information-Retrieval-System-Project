@@ -1,309 +1,529 @@
 """
-demo_and_test.py
-=================
-Script de demostración y prueba de integración del SRI para
-el dominio Tecnología y Software.
+Integrated SRI-RAG System - Command-Line Interface
 
-Ejecutar:
-    python demo_and_test.py
+Complete end-to-end workflow CLI for the information retrieval and generation system:
+
+  1. Local database search (LSI, vector similarity, TF-IDF)
+  2. Sufficiency detection (quantity, quality, semantic criteria)
+  3. Conditional web search augmentation (DuckDuckGo fallback)
+  4. Document consolidation and deduplication
+  5. RAG-based answer generation via Ollama
+  6. Citation extraction and formatting
+
+The system orchestrates all components automatically through MainOrchestrator,
+providing a unified interface for complex question answering.
+
+Usage:
+    # Single query
+    python main.py --query "How does machine learning work?"
+
+    # Interactive mode
+    python main.py --interactive
+
+    # With custom parameters
+    python main.py --query "Explain RAG" --max-local 5 --no-web-search
+
+    # Database management
+    python main.py --status
+    python main.py --load-data
+    python main.py --clear-db
+
+Environment Requirements:
+    - Ollama service running (default: http://localhost:11434)
+    - Python 3.10+
 """
 
 import sys
 import os
 import json
+import argparse
+import logging
+from pathlib import Path
+from typing import Dict, Optional, TYPE_CHECKING
+from datetime import datetime
 
-# Asegurar que los módulos sean accesibles
+# Ensure project modules are importable
 sys.path.insert(0, os.path.dirname(__file__))
 
-from sri.pipeline import SRIPipeline
-from evaluation.evaluation import Evaluator
+# Import orchestrator and response model
+from main_orchestator import MainOrchestator 
+from rag.output_parser import RAGResponse
+
+# =========================================================================
+# Logging Configuration
+# =========================================================================
+
+def configure_logging(verbose: bool, log_file: Optional[str] = None) -> logging.Logger:
+    """
+    Configure logging for the application.
+
+    Args:
+        verbose: Enable debug-level logging
+        log_file: Optional file path for log output
+
+    Returns:
+        Configured logger instance
+    """
+    level = logging.DEBUG if verbose else logging.INFO
+    format_string = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+    handlers: list = [logging.StreamHandler()]
+    if log_file:
+        handlers.append(logging.FileHandler(log_file))
+
+    logging.basicConfig(
+        level=level,
+        format=format_string,
+        handlers=handlers,
+    )
+    
+    return logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Corpus de ejemplo — dominio Tecnología y Software
-# ---------------------------------------------------------------------------
-SAMPLE_DOCUMENTS = [
-    {
-        "id": "doc_001",
-        "title": "Python para Machine Learning: Guía Completa 2024",
-        "content": (
-            "Python se ha convertido en el lenguaje de referencia para machine learning "
-            "e inteligencia artificial. Frameworks como TensorFlow, PyTorch y scikit-learn "
-            "permiten construir modelos de deep learning y aprendizaje automático de forma "
-            "sencilla. Este artículo explora las mejores prácticas, herramientas y librerías "
-            "para proyectos de IA con Python, incluyendo gestión de datos con pandas, "
-            "visualización con matplotlib y despliegue con FastAPI."
-        ),
-        "url": "https://tech.example.com/python-ml-guide",
-        "tags": ["python", "machine learning", "tensorflow", "pytorch", "ia"],
-        "type": "tutorial",
-        "date": "2024-03-15",
-        "popularity": 8500,
-    },
-    {
-        "id": "doc_002",
-        "title": "Docker y Kubernetes: Contenedores en Producción",
-        "content": (
-            "Docker y Kubernetes son las tecnologías clave para el despliegue de aplicaciones "
-            "en contenedores. Docker permite empaquetar aplicaciones con sus dependencias, "
-            "mientras Kubernetes orquesta múltiples contenedores a escala. Aprende a crear "
-            "Dockerfiles optimizados, configurar clusters de Kubernetes, implementar estrategias "
-            "de rolling deployment y gestionar microservicios con Helm charts."
-        ),
-        "url": "https://tech.example.com/docker-kubernetes",
-        "tags": ["docker", "kubernetes", "devops", "contenedores", "microservicios"],
-        "type": "article",
-        "date": "2024-02-20",
-        "popularity": 6200,
-    },
-    {
-        "id": "doc_003",
-        "title": "React vs Vue vs Angular: Comparativa 2024",
-        "content": (
-            "Los tres grandes frameworks de JavaScript frontend siguen dominando el desarrollo "
-            "web. React con su arquitectura de componentes y virtual DOM, Vue con su curva de "
-            "aprendizaje suave y Vue 3 Composition API, y Angular con su solución empresarial "
-            "completa. Analizamos rendimiento, ecosistema, curva de aprendizaje y casos de uso "
-            "para ayudarte a elegir el framework correcto para tu proyecto."
-        ),
-        "url": "https://tech.example.com/react-vue-angular-2024",
-        "tags": ["react", "vue", "angular", "javascript", "frontend", "web"],
-        "type": "article",
-        "date": "2024-01-10",
-        "popularity": 12000,
-    },
-    {
-        "id": "doc_004",
-        "title": "Introducción a los Large Language Models (LLMs)",
-        "content": (
-            "Los modelos de lenguaje grandes como GPT-4, Claude, Llama y Gemini han "
-            "revolucionado el procesamiento del lenguaje natural. Basados en arquitecturas "
-            "Transformer con mecanismos de atención, estos modelos son entrenados en "
-            "enormes corpus de texto. Exploramos cómo funcionan internamente, técnicas de "
-            "fine-tuning, prompt engineering, y aplicaciones en generación de código, "
-            "resumen, traducción y sistemas RAG."
-        ),
-        "url": "https://tech.example.com/llm-introduction",
-        "tags": ["llm", "gpt", "transformer", "nlp", "ia", "claude", "prompt"],
-        "type": "article",
-        "date": "2024-04-01",
-        "popularity": 15000,
-    },
-    {
-        "id": "doc_005",
-        "title": "Git Avanzado: Workflows y Mejores Prácticas",
-        "content": (
-            "Dominar Git va más allá de commit y push. Este artículo cubre estrategias "
-            "avanzadas como GitFlow, trunk-based development, cherry-pick, rebase interactivo, "
-            "git bisect para debugging, submódulos, y configuración de hooks para CI/CD. "
-            "También abordamos manejo de conflictos en equipos grandes y estrategias de "
-            "branching para proyectos open source."
-        ),
-        "url": "https://tech.example.com/git-advanced",
-        "tags": ["git", "devops", "version control", "cicd", "open source"],
-        "type": "tutorial",
-        "date": "2023-11-05",
-        "popularity": 4300,
-    },
-    {
-        "id": "doc_006",
-        "title": "Bases de Datos Vectoriales: ChromaDB, Pinecone, Weaviate",
-        "content": (
-            "Las bases de datos vectoriales son fundamentales para aplicaciones de IA modernas, "
-            "especialmente sistemas RAG y búsqueda semántica. ChromaDB ofrece una solución "
-            "embebida ideal para desarrollo, Pinecone escala a millones de vectores en la nube, "
-            "y Weaviate combina búsqueda vectorial con capacidades de grafo. Comparamos "
-            "rendimiento, API, costos y casos de uso de cada plataforma."
-        ),
-        "url": "https://tech.example.com/vector-databases",
-        "tags": ["chromadb", "pinecone", "weaviate", "rag", "embeddings", "ia"],
-        "type": "article",
-        "date": "2024-03-28",
-        "popularity": 7800,
-    },
-    {
-        "id": "doc_007",
-        "title": "Seguridad en APIs REST: OAuth 2.0 y JWT",
-        "content": (
-            "Proteger APIs REST es crítico en cualquier aplicación moderna. OAuth 2.0 "
-            "proporciona un framework de autorización estándar mientras JWT (JSON Web Tokens) "
-            "permite autenticación stateless. Cubrimos flujos de authorization code, "
-            "client credentials, refresh tokens, mejores prácticas para almacenamiento "
-            "seguro, prevención de ataques CSRF y XSS, y herramientas como Keycloak y Auth0."
-        ),
-        "url": "https://tech.example.com/api-security-oauth-jwt",
-        "tags": ["seguridad", "oauth", "jwt", "api", "rest", "autenticacion"],
-        "type": "documentation",
-        "date": "2023-12-18",
-        "popularity": 5500,
-    },
-    {
-        "id": "doc_008",
-        "title": "Arquitectura de Microservicios con Node.js",
-        "content": (
-            "Los microservicios permiten escalar y mantener aplicaciones complejas de forma "
-            "independiente. Node.js con su modelo asíncrono basado en eventos es ideal para "
-            "servicios ligeros y APIs de alta concurrencia. Diseñamos una arquitectura "
-            "completa con service discovery usando Consul, comunicación asíncrona con Kafka, "
-            "API gateway con Kong, y observabilidad con Prometheus y Grafana."
-        ),
-        "url": "https://tech.example.com/microservices-nodejs",
-        "tags": ["nodejs", "microservicios", "kafka", "arquitectura", "backend"],
-        "type": "article",
-        "date": "2024-01-25",
-        "popularity": 3900,
-    },
-    {
-        "id": "doc_009",
-        "title": "CI/CD con GitHub Actions: Automatización Completa",
-        "content": (
-            "GitHub Actions ha democratizado CI/CD para proyectos de cualquier tamaño. "
-            "Aprende a crear workflows para testing automático, linting, build de Docker "
-            "images, deployment a AWS/GCP/Azure, gestión de secretos, matrix builds para "
-            "múltiples versiones de Python/Node, y cómo optimizar tiempos con caché de "
-            "dependencias y ejecución paralela de jobs."
-        ),
-        "url": "https://tech.example.com/github-actions-cicd",
-        "tags": ["github actions", "cicd", "devops", "automatizacion", "docker"],
-        "type": "tutorial",
-        "date": "2024-02-08",
-        "popularity": 6700,
-    },
-    {
-        "id": "doc_010",
-        "title": "Sistemas de Recuperación de Información: LSI y Modelos Vectoriales",
-        "content": (
-            "La Indexación Semántica Latente (LSI) es un modelo no básico de recuperación "
-            "de información que usa descomposición SVD para descubrir relaciones semánticas "
-            "latentes entre términos y documentos. A diferencia del modelo vectorial clásico, "
-            "LSI puede relacionar términos sinónimos y resolver polisemia. Implementaciones "
-            "con scikit-learn TruncatedSVD y comparativa con modelos probabilísticos de "
-            "lenguaje y redes neuronales para IR."
-        ),
-        "url": "https://tech.example.com/lsi-information-retrieval",
-        "tags": ["lsi", "sri", "recuperacion informacion", "nlp", "svd", "vectores"],
-        "type": "article",
-        "date": "2024-03-05",
-        "popularity": 2100,
-    },
-    {
-        "id": "doc_011",
-        "title": "PostgreSQL Avanzado: Índices, JSONB y Full-Text Search",
-        "content": (
-            "PostgreSQL es una de las bases de datos relacionales más potentes. Exploramos "
-            "índices avanzados (GIN, GiST, BRIN), almacenamiento de datos semiestructurados "
-            "con JSONB, búsqueda de texto completo con tsvector y tsquery, particionamiento "
-            "de tablas, replicación streaming, y extensiones como PostGIS para datos "
-            "geoespaciales y pg_vector para embeddings de IA."
-        ),
-        "url": "https://tech.example.com/postgresql-advanced",
-        "tags": ["postgresql", "base de datos", "sql", "full text search", "ia"],
-        "type": "documentation",
-        "date": "2023-10-30",
-        "popularity": 4800,
-    },
-    {
-        "id": "doc_012",
-        "title": "Rust para Desarrolladores de Python: Rendimiento sin Sacrificar Seguridad",
-        "content": (
-            "Rust ofrece rendimiento comparable a C++ con garantías de seguridad en memoria "
-            "sin garbage collector. Para desarrolladores de Python, Rust es ideal cuando se "
-            "necesita rendimiento crítico. Cubrimos ownership, borrowing, lifetimes, "
-            "concurrencia sin data races, y cómo integrar Rust con Python mediante PyO3 "
-            "para acelerar código crítico sin abandonar el ecosistema Python."
-        ),
-        "url": "https://tech.example.com/rust-for-python-developers",
-        "tags": ["rust", "python", "rendimiento", "sistemas", "pyo3"],
-        "type": "tutorial",
-        "date": "2024-04-03",
-        "popularity": 5100,
-    },
-]
+# =========================================================================
+# Database Operations
+# =========================================================================
+
+def display_database_status(orchestrator: MainOrchestator, logger: logging.Logger) -> None:
+    """
+    Display current database health and status.
+
+    Args:
+        orchestrator: MainOrchestator instance
+        logger: Logger instance
+    """
+    health = orchestrator.check_database_health()
+    
+    print("\n" + "=" * 70)
+    print("DATABASE STATUS")
+    print("=" * 70)
+    print(f"Status:              {health['status'].upper()}")
+    print(f"Document Count:      {health['document_count']}")
+    print(f"File Documents:      {health['file_document_count']}")
+    print(f"Can Search:          {'Yes' if health['can_search'] else 'No'}")
+    print(f"ChromaDB Available:  {'Yes' if health['has_chromadb'] else 'No'}")
+    print("=" * 70 + "\n")
+    
+    logger.info(f"Database status: {health['status']}")
 
 
-# ---------------------------------------------------------------------------
-# Queries de prueba con juicios de relevancia
-# ---------------------------------------------------------------------------
-TEST_QUERIES = [
-    {
-        "query_id": "q1",
-        "query": "machine learning python frameworks inteligencia artificial",
-        "relevant": ["doc_001", "doc_004", "doc_010"],
-        "grades": {"doc_001": 3, "doc_004": 2, "doc_010": 1},
-    },
-    {
-        "query_id": "q2",
-        "query": "docker kubernetes contenedores despliegue devops",
-        "relevant": ["doc_002", "doc_005", "doc_009"],
-        "grades": {"doc_002": 3, "doc_009": 2, "doc_005": 1},
-    },
-    {
-        "query_id": "q3",
-        "query": "bases de datos vectoriales embeddings rag chromadb",
-        "relevant": ["doc_006", "doc_010", "doc_011"],
-        "grades": {"doc_006": 3, "doc_010": 2, "doc_011": 1},
-    },
-    {
-        "query_id": "q4",
-        "query": "seguridad api rest autenticacion oauth",
-        "relevant": ["doc_007", "doc_008"],
-        "grades": {"doc_007": 3, "doc_008": 1},
-    },
-    {
-        "query_id": "q5",
-        "query": "javascript frontend frameworks react vue angular",
-        "relevant": ["doc_003"],
-        "grades": {"doc_003": 3},
-    },
-]
+def load_data_command(orchestrator: MainOrchestator, logger: logging.Logger, max_articles: int = 100) -> None:
+    """
+    Load documents from crawlers and build indices.
+
+    Args:
+        orchestrator: MainOrchestator instance
+        logger: Logger instance
+        max_articles: Maximum articles per crawler
+    """
+    print("\n" + "=" * 70)
+    print("LOADING DATA FROM CRAWLERS")
+    print("=" * 70)
+    
+    logger.info(f"Starting crawler execution (max_articles={max_articles})")
+    result = orchestrator.load_documents_from_crawlers(max_articles=max_articles)
+    
+    if result['success']:
+        print(f"[OK] Success: {result['message']}")
+        print(f"  Total documents:   {result['total_documents']}")
+        print(f"  Indexed documents: {result['indexed_documents']}")
+        print(f"  Duration:          {result['duration_seconds']:.2f}s")
+        logger.info(f"Data loaded: {result['indexed_documents']} documents indexed")
+    else:
+        print(f"[FAIL] Failed: {result['message']}")
+        logger.error(f"Data loading failed: {result['message']}")
+    
+    print("=" * 70 + "\n")
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-def main():
-    print("=" * 60)
-    print("  SRI — Tecnología y Software")
-    print("  Prueba de Integración Completa")
-    print("=" * 60)
+def clear_database_command(orchestrator: MainOrchestator, logger: logging.Logger) -> None:
+    """
+    Clear all indices, raw crawler files, and consolidated documents.
 
-    # 1. Crear pipeline
-    pipeline = SRIPipeline(lsi_components=50, top_k=5, load_existing=False)
+    Args:
+        orchestrator: MainOrchestator instance
+        logger: Logger instance
+    """
+    print("\n" + "=" * 70)
+    print("CLEARING DATABASE")
+    print("=" * 70)
+    
+    confirm = input(
+        "WARNING: This will delete all indices, data/raw, and data/documents.json. Continue? (yes/no): "
+    ).strip().lower()
+    if confirm != "yes":
+        print("Cancelled.")
+        return
+    
+    logger.warning("User requested database clear")
+    result = orchestrator.clear_all_indices()
+    
+    if result['success']:
+        print(f"[OK] Success: {result['message']}")
+        logger.info("Database cleared successfully")
+    else:
+        print(f"[FAIL] Failed: {result['message']}")
+        logger.error(f"Database clear failed: {result['message']}")
+    
+    print("=" * 70 + "\n")
 
-    # 2. Indexar corpus
-    pipeline.index(SAMPLE_DOCUMENTS, save=True)
 
-    # 3. Guardar queries de prueba
-    os.makedirs("data", exist_ok=True)
-    test_path = "data/test_queries.json"
-    Evaluator.save_test_queries(TEST_QUERIES, test_path)
+# =========================================================================
+# Query Execution
+# =========================================================================
 
-    # 4. Búsquedas de ejemplo
-    print("\n--- Búsqueda: 'machine learning python' ---")
-    results = pipeline.search("machine learning python", top_k=5)
-    for r in results:
-        print(f"  [{r['position']}] ({r['final_score']:.4f}) "
-              f"{r['title']} [{r['display_type']}]")
+def format_response(response: RAGResponse) -> None:
+    """
+    Format and display RAG response with citations.
 
-    print("\n--- Búsqueda: 'bases de datos vectoriales' ---")
-    results = pipeline.search("bases de datos vectoriales embeddings", top_k=5)
-    for r in results:
-        print(f"  [{r['position']}] ({r['final_score']:.4f}) "
-              f"{r['title']} [{r['display_type']}]")
+    Args:
+        response: RAGResponse object from MainOrchestrator
+    """
+    print("\n" + "=" * 70)
+    print("ANSWER")
+    print("=" * 70)
+    print(response.answer)
+    
+    # Display metadata if available
+    if hasattr(response, 'metadata') and response.metadata:
+        print("\n--- METADATA ---")
+        metadata = response.metadata
+        if isinstance(metadata, dict):
+            print(f"Local documents used:  {metadata.get('local_documents', 0)}")
+            print(f"Web documents used:    {metadata.get('web_documents', 0)}")
+            print(f"Total documents:       {metadata.get('total_documents_used', 0)}")
+            
+            if metadata.get('insufficiency_detected'):
+                print(f"Insufficiency:         Yes")
+                print(f"Reasons:               {', '.join(metadata.get('insufficiency_reasons', []))}")
+            
+            if metadata.get('generation_time_seconds'):
+                print(f"Generation time:       {metadata['generation_time_seconds']:.2f}s")
+    
+    # Display citations
+    print("\n--- CITATIONS ---")
+    if not response.citations:
+        print("(No citations extracted)")
+    else:
+        for idx, citation in enumerate(response.citations, 1):
+            title = getattr(citation, 'title', 'Untitled')
+            url = getattr(citation, 'url', 'N/A')
+            score = getattr(citation, 'score', None)
+            
+            print(f"{idx}. {title}")
+            print(f"   URL: {url}")
+            if score:
+                print(f"   Score: {score:.4f}")
+    
+    print("=" * 70 + "\n")
 
-    print("\n--- Búsqueda: 'seguridad api oauth jwt' ---")
-    results = pipeline.search("seguridad api oauth jwt", top_k=5)
-    for r in results:
-        print(f"  [{r['position']}] ({r['final_score']:.4f}) "
-              f"{r['title']} [{r['display_type']}]")
 
-    # 5. Evaluación completa
-    print("\n--- Evaluación del sistema ---")
-    eval_output = "data/evaluation_report.json"
-    pipeline.evaluate(test_path, output_path=eval_output)
+def execute_single_query(
+    orchestrator: MainOrchestator,
+    query: str,
+    max_local: int = 5,
+    use_web_search: bool = True,
+    logger: Optional[logging.Logger] = None,
+) -> None:
+    """
+    Execute a single query through the orchestrator.
 
-    print("\n✓ Demo completado. Archivos generados en data/")
+    Args:
+        orchestrator: MainOrchestator instance
+        query: User question
+        max_local: Maximum local search results
+        use_web_search: Enable web search fallback
+        logger: Logger instance
+    """
+    if not logger:
+        logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Query received: {query[:60]}...")
+        print("\n" + "=" * 70)
+        print(f"QUERY: {query}")
+        print("=" * 70)
+        
+        response = orchestrator.query(
+            question=query,
+            max_local_results=max_local,
+            use_web_search=use_web_search,
+            auto_reload_empty=True,
+        )
+        
+        format_response(response)
+        
+    except Exception as e:
+        logger.error(f"Query execution failed: {e}", exc_info=True)
+        print(f"\n[ERROR] {e}\n")
+def interactive_mode(orchestrator: MainOrchestator, logger: logging.Logger) -> None:
+    """
+    Run interactive query loop.
+
+    Args:
+        orchestrator: MainOrchestator instance
+        logger: Logger instance
+    """
+    logger.info("Entering interactive mode")
+    
+    print("\n" + "=" * 70)
+    print("INTERACTIVE MODE - Information Retrieval System")
+    print("=" * 70)
+    print("Commands:")
+    print("  ask <query>      - Ask a question")
+    print("  status           - Show database status")
+    print("  load             - Load data from crawlers")
+    print("  clear            - Clear database")
+    print("  help             - Show this help")
+    print("  exit             - Exit application")
+    print("=" * 70 + "\n")
+    
+    while True:
+        try:
+            user_input = input(">> ").strip()
+            
+            if not user_input:
+                continue
+            
+            # Parse command
+            parts = user_input.split(None, 1)
+            cmd = parts[0].lower()
+            args = parts[1] if len(parts) > 1 else ""
+            
+            if cmd in {"exit", "quit", "bye", "q"}:
+                print("Goodbye!")
+                logger.info("User exited application")
+                break
+            
+            elif cmd in {"status", "info"}:
+                display_database_status(orchestrator, logger)
+            
+            elif cmd == "load":
+                load_data_command(orchestrator, logger)
+            
+            elif cmd == "clear":
+                clear_database_command(orchestrator, logger)
+            
+            elif cmd in {"ask", "query", "q"}:
+                if not args:
+                    print("Usage: ask <question>")
+                    continue
+                execute_single_query(orchestrator, args, logger=logger)
+            
+            elif cmd == "help":
+                print("""
+Available Commands:
+  ask <query>      - Ask a question to the system
+  status           - Display current database status
+  load             - Load documents from crawlers
+  clear            - Clear all indices (requires confirmation)
+  help             - Show this help message
+  exit             - Exit the application
+                """)
+            
+            else:
+                # Treat input as query if not a recognized command
+                if len(user_input) > 3:
+                    execute_single_query(orchestrator, user_input, logger=logger)
+                else:
+                    print("Command not recognized. Type 'help' for available commands.")
+        
+        except KeyboardInterrupt:
+            print("\n(Interrupted)")
+            logger.info("Interactive session interrupted by user")
+            break
+        except Exception as e:
+            logger.error(f"Error in interactive mode: {e}", exc_info=True)
+            print(f"Error: {e}\n")
+
+
+# =========================================================================
+# CLI Configuration
+# =========================================================================
+
+def build_parser() -> argparse.ArgumentParser:
+    """
+    Build command-line argument parser.
+
+    Returns:
+        ArgumentParser instance
+    """
+    parser = argparse.ArgumentParser(
+        description="SRI-RAG System: Integrated Information Retrieval & Answering",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  Query:        python main.py --query "How does RAG work?"
+  Interactive:  python main.py --interactive
+  Status:       python main.py --status
+  Load data:    python main.py --load-data
+  Clear DB:     python main.py --clear-db --force
+        """,
+    )
+
+    # Mode selection (mutually exclusive)
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument(
+        "--query",
+        type=str,
+        help="Execute single query and exit",
+        metavar="QUESTION",
+    )
+    mode_group.add_argument(
+        "--interactive", "-i",
+        action="store_true",
+        help="Enter interactive query mode",
+    )
+    mode_group.add_argument(
+        "--status",
+        action="store_true",
+        help="Display database status",
+    )
+    mode_group.add_argument(
+        "--load-data",
+        action="store_true",
+        help="Load documents from crawlers",
+    )
+    mode_group.add_argument(
+        "--clear-db",
+        action="store_true",
+        help="Clear all indices (requires --force)",
+    )
+
+    # Search options
+    search_group = parser.add_argument_group("Search Options")
+    search_group.add_argument(
+        "--max-local",
+        type=int,
+        default=5,
+        help="Maximum local search results to use (default: 5)",
+        metavar="N",
+    )
+    search_group.add_argument(
+        "--no-web-search",
+        action="store_true",
+        help="Disable web search fallback",
+    )
+
+    # Data options
+    data_group = parser.add_argument_group("Data & Logging")
+    data_group.add_argument(
+        "--max-articles",
+        type=int,
+        default=100,
+        help="Maximum articles per crawler (default: 100)",
+        metavar="N",
+    )
+    data_group.add_argument(
+        "--log-file",
+        help="Write logs to file",
+        metavar="PATH",
+    )
+    data_group.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Enable debug logging",
+    )
+    data_group.add_argument(
+        "--force",
+        action="store_true",
+        help="Skip confirmations (e.g., for --clear-db)",
+    )
+
+    return parser
+
+
+# =========================================================================
+# Main Application
+# =========================================================================
+
+def main() -> int:
+    """
+    Main application entry point.
+
+    Parses arguments and delegates to appropriate operation:
+    - Single query execution
+    - Interactive mode
+    - Database status display
+    - Data loading
+    - Database clearing
+
+    Returns:
+        Exit code (0 for success, non-zero for error)
+    """
+    # Parse arguments
+    parser = build_parser()
+    args = parser.parse_args()
+
+    # Configure logging
+    logger = configure_logging(args.verbose, log_file=args.log_file)
+
+    try:
+        # Initialize MainOrchestrator
+        logger.info("Initializing MainOrchestrator...")
+        orchestrator = MainOrchestator()  # type: ignore
+        logger.info("MainOrchestrator initialized successfully")
+        print("[OK] System ready\n")
+
+        # Delegate to appropriate mode
+        if args.query:
+            execute_single_query(
+                orchestrator,
+                args.query,
+                max_local=args.max_local,
+                use_web_search=not args.no_web_search,
+                logger=logger,
+            )
+            return 0
+
+        elif args.interactive:
+            interactive_mode(orchestrator, logger)
+            return 0
+
+        elif args.status:
+            display_database_status(orchestrator, logger)
+            return 0
+
+        elif args.load_data:
+            load_data_command(orchestrator, logger, max_articles=args.max_articles)
+            return 0
+
+        else:  # args.clear_db
+            if args.force:
+                # Skip confirmation
+                logger.warning("Database clear requested with --force")
+                result = orchestrator.clear_all_indices()
+                if result['success']:
+                    print(f"[OK] Success: {result['message']}")
+                    logger.info("Database cleared")
+                else:
+                    print(f"[FAIL] Failed: {result['message']}")
+                    logger.error(f"Database clear failed: {result['message']}")
+                return 0 if result['success'] else 1
+            else:
+                clear_database_command(orchestrator, logger)
+                return 0
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
+        print(f"[ERROR] {e}", file=sys.stderr)
+        return 1
+
+    except RuntimeError as e:
+        logger.error(f"Runtime error: {e}")
+        print(f"[ERROR] {e}", file=sys.stderr)
+        return 1
+
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user")
+        print("\n(Interrupted)")
+        return 130
+
+    except Exception as e:
+        logger.exception(f"Unexpected error: {e}")
+        print(f"[ERROR] Unexpected error: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
