@@ -79,7 +79,7 @@ JSON Response:"""
             title = _strip_emojis(str(doc.get("title", "Untitled")))
             content = _strip_emojis(str(doc.get("content", "")))[:rag_config.max_doc_content_length]
 
-            doc_text = f"[{doc_id}]\nTITLE: {title}\nCONTENT:\n{content}\n"
+            doc_text = f"ID: [{doc_id}]\nTITLE: {title}\nCONTENT:\n{content}\n"
 
             # Check if adding this doc would exceed limit
             if total_chars + len(doc_text) > max_chars:

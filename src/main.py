@@ -38,6 +38,7 @@ import os
 import json
 import argparse
 import logging
+import re
 from pathlib import Path
 from typing import Dict, Optional, TYPE_CHECKING
 from datetime import datetime
@@ -182,7 +183,18 @@ def format_response(response: RAGResponse) -> None:
     print("\n" + "=" * 70)
     print("ANSWER")
     print("=" * 70)
-    print(response.answer)
+
+    citation_map = []
+    for index, citation in enumerate(response.citations, 1):
+        citation_id = getattr(citation, 'doc_id', None) or getattr(citation, 'id', None)
+        if citation_id:
+            citation_map.append((str(citation_id), index))
+
+    shown_answer = response.answer
+    for citation_id, index in sorted(citation_map, key=lambda item: len(item[0]), reverse=True):
+        shown_answer = re.sub(rf"\[{re.escape(citation_id)}\]", f"[{index}]", shown_answer)
+
+    print(shown_answer)
     
     # Display metadata if available
     if hasattr(response, 'metadata') and response.metadata:
@@ -207,13 +219,19 @@ def format_response(response: RAGResponse) -> None:
     else:
         for idx, citation in enumerate(response.citations, 1):
             title = getattr(citation, 'title', 'Untitled')
-            url = getattr(citation, 'url', 'N/A')
-            score = getattr(citation, 'score', None)
-            
-            print(f"{idx}. {title}")
-            print(f"   URL: {url}")
-            if score:
-                print(f"   Score: {score:.4f}")
+            url = getattr(citation, 'url', None)
+            date = getattr(citation, 'date', None)
+            snippet = getattr(citation, 'snippet', None)
+
+            metadata_parts = []
+            if date:
+                metadata_parts.append(f"{date}")
+            if url is not None:
+                metadata_parts.append(f"{url}")
+
+            print(f"[{idx}] {title} ({', '.join(metadata_parts)})")
+            if snippet:
+                print(f"    Snippet: {snippet}")
     
     print("=" * 70 + "\n")
 
