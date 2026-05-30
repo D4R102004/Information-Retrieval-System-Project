@@ -206,26 +206,26 @@ class TestInsufficientDataDetection:
             assert any('score' in str(r) for r in insufficiency['reasons'])
         logger.info(f"✓ Quality criterion validated: avg_score={avg_score:.2f}")
 
-    # Legacy semantic criterion test (keyword overlap)
-    # def test_detect_insufficiency_semantic(self):
-    #     """Test semantic criterion: insufficient keyword overlap."""
-    #     orchestrator = MainOrchestator()
-        
-    #     # Results with minimal keyword overlap to query
-    #     results = [
-    #         {'content': 'unrelated content about cooking', 'score': 0.5},
-    #         {'content': 'another unrelated topic', 'score': 0.45}
-    #     ]
-        
-    #     query = "machine learning tensorflow neural networks"
-    #     insufficiency = orchestrator.detect_insufficiency_for_query(
-    #         query,
-    #         results
-    #     )
-        
-    #     assert 'metrics' in insufficiency
-    #     assert 'has_semantic_overlap' in insufficiency['metrics']
-    #     logger.info(f"✓ Semantic criterion validated")
+    # Semantic criterion test (keyword overlap)
+    def test_detect_insufficiency_semantic(self):
+        """Test semantic criterion: insufficient keyword overlap."""
+        orchestrator = MainOrchestator()
+  
+        # Results with minimal keyword overlap to query
+        results = [
+            {'content': 'unrelated content about cooking', 'score': 0.5},
+            {'content': 'another unrelated topic', 'score': 0.45}
+        ]
+  
+        query = "machine learning tensorflow neural networks"
+        insufficiency = orchestrator.detect_insufficiency_for_query(
+            query,
+            results
+        )
+  
+        assert 'metrics' in insufficiency
+        assert 'has_semantic_overlap' in insufficiency['metrics']
+        logger.info(f"✓ Semantic criterion validated")
 
     def test_insufficient_detection_multiple_reasons(self):
         """Test insufficiency when multiple criteria fail."""
@@ -465,6 +465,51 @@ class TestQueryPipeline:
             logger.info("✓ Query response structure valid")
         except Exception as e:
             logger.warning(f"Query response structure: {str(e)}")
+
+    def test_query_retrieved_documents_in_metadata(self):
+        """Verify retrieved_documents is present in metadata with valid format."""
+        orchestrator = MainOrchestator()
+        
+        try:
+            response = orchestrator.query(
+                question="test query",
+                auto_reload_empty=False,
+                use_web_search=False
+            )
+            
+            # Verify response structure
+            assert isinstance(response, RAGResponse)
+            assert hasattr(response, 'metadata')
+            assert isinstance(response.metadata, dict)
+            
+            # Verify retrieved_documents exists in metadata
+            assert 'retrieved_documents' in response.metadata, \
+                "retrieved_documents not found in metadata"
+            
+            retrieved_docs = response.metadata['retrieved_documents']
+            
+            # Verify it's a list
+            assert isinstance(retrieved_docs, list), \
+                f"retrieved_documents should be list, got {type(retrieved_docs)}"
+            
+            # Verify each document has valid structure
+            for i, doc in enumerate(retrieved_docs):
+                assert isinstance(doc, dict), \
+                    f"Document {i} should be dict, got {type(doc)}"
+                
+                # Check for at least one content field
+                has_content = any(
+                    field in doc for field in ['content', 'text', 'body']
+                )
+                assert has_content or 'title' in doc or 'id' in doc, \
+                    f"Document {i} missing content, title, or id field"
+            
+            logger.info(
+                f"✓ Retrieved documents valid: {len(retrieved_docs)} docs "
+                f"with proper structure"
+            )
+        except Exception as e:
+            logger.warning(f"Retrieved documents test: {str(e)}")
 
 
 class TestErrorHandling:

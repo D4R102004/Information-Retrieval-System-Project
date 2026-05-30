@@ -25,6 +25,7 @@ from sri.crawler.settings import CrawlerSettings
 from rag.rag_module import RAGModule
 from rag.llm_provider import OllamaProvider # Change to desired LLM provider
 from rag.output_parser import RAGResponse
+from rag.config import config as rag_config
 from sri.web_search.checker import SufficiencyChecker
 from sri.web_search.searcher import WebSearcher
 
@@ -301,14 +302,14 @@ class MainOrchestator:
             return True  # Can't meaningfully check
 
         overlap_count = 0
-        for doc in documents[:10]:  # Check first 10 docs
+        for doc in documents[:rag_config.max_cites]:  # Check first max_cites docs
             doc_text = self._extract_content(doc).lower()
             doc_words = set(doc_text.split())
             overlap = len(query_words & doc_words)
             if overlap > 0:
                 overlap_count += 1
 
-        return overlap_count > 0
+        return overlap_count > 0  # At least one doc has some overlap
 
     def detect_insufficiency_for_query(
         self,
@@ -316,11 +317,12 @@ class MainOrchestator:
         results: List[Dict]
     ) -> Dict[str, Any]:
         """
-        Apply 2-criterion insufficiency detection.
+        Apply 3-criterion insufficiency detection.
 
         Criteria:
         1. Quantity: Too few results (< MIN_RESULTS_FOR_QUERY)
         2. Quality: Low average relevance score (< MIN_AVG_SCORE_THRESHOLD)
+        3. Semantic Overlap: No significant keyword overlap with query
 
         Args:
             query: User query
@@ -364,11 +366,11 @@ class MainOrchestator:
                         f"Low average score ({avg_score:.2f} < {self.settings.MIN_AVG_SCORE_THRESHOLD})"
                     )
 
-        # Legacy criterion 3: Semantic overlap
-        # has_overlap = self._has_semantic_overlap(query, results)
-        # metrics['has_semantic_overlap'] = has_overlap
-        # if not has_overlap:
-        #     reasons.append("Insufficient semantic overlap with query")
+        # Criterion 3: Semantic overlap
+        has_overlap = self._has_semantic_overlap(query, results)
+        metrics['has_semantic_overlap'] = has_overlap
+        if not has_overlap:
+            reasons.append("Insufficient semantic overlap with query")
 
         return {
             'is_insufficient': len(reasons) > 0,
@@ -377,6 +379,212 @@ class MainOrchestator:
         }
 
     # ==================== QUERY EXECUTION PIPELINE ====================
+
+    def retrieve_documents(
+        self,
+        question: str,
+        max_local_results: int = 5,
+        use_web_search: bool = True,
+        auto_reload_empty: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Retrieve relevant documents for a question.
+
+        Executes: database readiness checks -> local search -> insufficiency detection ->
+        conditional web search -> document consolidation.
+
+        Args:
+            question: User query
+            max_local_results: Maximum local search results to use
+            use_web_search: Enable web search augmentation
+            auto_reload_empty: Auto-execute crawlers if DB is below minimum threshold
+
+        Returns:
+            Dict with retrieval output: {
+                'documents': List[Dict],
+                'metadata': Dict[str, Any],
+                'error': Optional[str]
+            }
+        """
+        metadata = {
+            'auto_crawled': False,
+            'total_documents_used': 0,
+            'local_documents': 0,
+            'web_documents': 0,
+            'insufficiency_detected': False,
+            'insufficiency_reasons': [],
+            'generation_time_seconds': 0.0,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+
+        if not question or not question.strip():
+            metadata['retrieved_documents'] = []
+            return {
+                'documents': [],
+                'metadata': metadata,
+                'error': "Error: Query cannot be empty"
+            }
+
+        self._log_step("retrieve_documents", f"Retrieving documents for: {question}")
+
+        # Step 1: Check database health and ensure minimum documents before searching.
+        db_health = self.check_database_health()
+        vec_count = int(db_health.get('document_count', 0))
+        file_count = int(db_health.get('file_document_count', 0))
+        raw_count = 0
+        try:
+            raw_count = int(self.crawler_caller.count_raw_documents())
+        except Exception:
+            raw_count = 0
+
+        self._log_step(
+            "retrieve_documents",
+            f"DB counts -> indexed:{vec_count}, consolidated_file:{file_count}, raw:{raw_count}"
+        )
+
+        # Only allow search when there are at least MIN_DB_DOCUMENTS indexed documents.
+        allowed_to_search = vec_count >= MIN_DB_DOCUMENTS
+
+        # If not enough indexed docs, attempt enrichment
+        if not allowed_to_search:
+            # Try loading from consolidated file
+            if file_count >= MIN_DB_DOCUMENTS:
+                self._log_step("retrieve_documents", f"Consolidated file count: {file_count} -- loading into index")
+                try:
+                    docs = self.crawler_caller.load_consolidated_documents()
+                    if docs:
+                        self.pipeline.index(docs)
+                        allowed_to_search = True
+                        metadata['auto_crawled'] = True
+                        self._log_step("retrieve_documents", f"Loaded and indexed {len(docs)} documents from documents.json")
+                except Exception as e:
+                    logger.warning(f"Failed to index consolidated documents: {e}")
+
+            # Try consolidating raw files if present
+            if not allowed_to_search and raw_count >= MIN_DB_DOCUMENTS:
+                self._log_step("retrieve_documents", f"Raw documents count: {raw_count} -- consolidating and indexing")
+                try:
+                    docs = self.crawler_caller.consolidate_raw_to_documents()
+                    if docs:
+                        self.crawler_caller.save_consolidated_documents(docs) # Save for future sessions
+                        self.pipeline.index(docs)
+                        allowed_to_search = True
+                        metadata['auto_crawled'] = True
+                        self._log_step("retrieve_documents", f"Consolidated and indexed {len(docs)} raw documents")
+                except Exception as e:
+                    logger.warning(f"Failed to consolidate/index raw documents: {e}")
+
+            # As a last resort, trigger crawlers if allowed
+            if not allowed_to_search and auto_reload_empty:
+                self._log_step("retrieve_documents", "Below quota — triggering crawlers to obtain more documents")
+                try:
+                    load_result = self.load_documents_from_crawlers(force_recrawl=True)
+                    if load_result.get('success') and load_result.get('indexed_documents', 0) >= MIN_DB_DOCUMENTS:
+                        allowed_to_search = True
+                        metadata['auto_crawled'] = True
+                        self._log_step("retrieve_documents", f"Crawlers loaded {load_result.get('indexed_documents')} documents")
+                    else:
+                        self._log_step("retrieve_documents", f"Crawler attempt did not reach quota: {load_result.get('message')}")
+                except Exception as e:
+                    logger.warning(f"Crawlers failed during enrichment attempt: {e}")
+
+        db_health = self.check_database_health()
+
+        # If still not allowed, return error if database is empty or proceed with warning if below quota but not empty
+        if not allowed_to_search:
+            vec_count = int(db_health.get('document_count', 0))
+            self._log_step("retrieve_documents", f"Insufficient documents ({vec_count}) after enrichment attempts")
+
+            if vec_count < 1:
+                metadata['retrieved_documents'] = []
+                return {
+                    'documents': [],
+                    'metadata': metadata,
+                    'error': "Database is empty. A search is impossible to perform"
+                }
+
+        # Step 2: Local search
+        local_results = self._search_locally(question, max_results=max_local_results)
+        for result in local_results:
+            if "content" not in result and "snippet" in result:
+                result["content"] = result.pop("snippet") # Legacy support for snippet field
+        self._log_step("retrieve_documents", f"Local search returned {len(local_results)} results")
+
+        # Step 3: Insufficiency detection
+        insufficiency = self.detect_insufficiency_for_query(question, local_results)
+        metadata['insufficiency_detected'] = insufficiency['is_insufficient']
+        metadata['insufficiency_reasons'] = insufficiency['reasons']
+        metadata['local_documents'] = len(local_results)
+
+        # Step 4: Web search if needed
+        web_results = []
+        if use_web_search and insufficiency['is_insufficient']:
+            self._log_step("retrieve_documents", "Insufficiency detected, performing web search")
+            web_results = self._search_web(question)
+            metadata['web_documents'] = len(web_results)
+            self._log_step("retrieve_documents", f"Web search returned {len(web_results)} results")
+
+        # Persist web results to documents.json for future sessions
+        if web_results:
+            web_docs = [
+                {
+                    "id": r.get('id', ''),
+                    "title": clean_scraped_text(str(r.get("title", ""))),
+                    "content": clean_scraped_text(str(r.get("content", ""))),
+                    "url": r.get("url"),
+                    "source": "web_augment",
+                    "date": datetime.now(timezone.utc).isoformat(),
+                }
+                for i, r in enumerate(web_results)
+            ]
+            try:
+                self.crawler_caller.merge_documents(web_docs)
+                self._log_step(
+                    "retrieve_documents",
+                    f"Merged {len(web_docs)} web results to documents.json "
+                )
+            except Exception as e:
+                logger.warning(f"Failed to persist web results: {e}")
+
+        # Step 5: Consolidate documents
+        all_documents = self._consolidate_documents(local_results, web_results)
+        metadata['total_documents_used'] = len(all_documents)
+        metadata['retrieved_documents'] = all_documents
+        self._log_step("retrieve_documents", f"Consolidated {len(all_documents)} documents")
+
+        return {
+            'documents': all_documents,
+            'metadata': metadata,
+            'error': None
+        }
+
+    def augment_response(self, question: str, documents: List[Dict]) -> RAGResponse:
+        """
+        Generate a RAG response given a list of documents.
+
+        Args:
+            question: User query text used for prompt generation
+            documents: List of consolidated documents to pass to RAG
+
+        Returns:
+            RAGResponse containing `answer`, `citations`, and minimal metadata
+        """
+        self._log_step("augment_response", f"Generating RAG answer for {len(documents)} documents")
+        start = time.time()
+
+        try:
+            if not documents:
+                return RAGResponse(answer="No relevant documents found to generate an answer.", citations=[])
+
+            rag_resp = self.rag_module.generate(query=question, documents=documents)
+            duration = time.time() - start
+            self._log_step("augment_response", f"RAG generation completed in {duration:.2f}s")
+
+            return rag_resp
+
+        except Exception as e:
+            logger.error(f"augment_response failed: {e}", exc_info=True)
+            return RAGResponse(answer=f"Error generating response: {str(e)}", citations=[])
 
     def query(
         self,
@@ -401,170 +609,46 @@ class MainOrchestator:
             auto_reload_empty: Auto-execute crawlers if DB empty
 
         Returns:
-            RAGResponse with answer, citations, and metadata
+            RAGResponse with answer, citations, and metadata.
+            Retrieved documents available in response.metadata['retrieved_documents']
         """
-        # Validate input
-        if not question or not question.strip():
-            metadata = {'timestamp': datetime.now(timezone.utc).isoformat()}
-            return RAGResponse(
-                answer="Error: Query cannot be empty",
-                citations=[],
-                metadata=metadata
-            )
-
         execution_start = time.time()
-        metadata = {
-            'auto_crawled': False,
-            'total_documents_used': 0,
-            'local_documents': 0,
-            'web_documents': 0,
-            'insufficiency_detected': False,
-            'insufficiency_reasons': [],
+        metadata: Dict[str, Any] = {
             'generation_time_seconds': 0.0,
-            'timestamp': datetime.now(timezone.utc).isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'retrieved_documents': []
         }
 
         try:
             self._log_step("query", f"Processing: {question}")
 
-            # Step 1: Check database health and ensure minimum documents before searching.
-            db_health = self.check_database_health()
-            vec_count = int(db_health.get('document_count', 0))
-            file_count = int(db_health.get('file_document_count', 0))
-            raw_count = 0
-            try:
-                raw_count = int(self.crawler_caller.count_raw_documents())
-            except Exception:
-                raw_count = 0
-
-            self._log_step(
-                "query",
-                f"DB counts -> indexed:{vec_count}, consolidated_file:{file_count}, raw:{raw_count}"
+            retrieval_result = self.retrieve_documents(
+                question=question,
+                max_local_results=max_local_results,
+                use_web_search=use_web_search,
+                auto_reload_empty=auto_reload_empty,
             )
+            metadata = retrieval_result.get('metadata', metadata)
+            all_documents = retrieval_result.get('documents', [])
 
-            # Only allow search when there are at least MIN_DB_DOCUMENTS indexed documents.
-            allowed_to_search = vec_count >= MIN_DB_DOCUMENTS
+            retrieval_error = retrieval_result.get('error')
+            if retrieval_error:
+                metadata['generation_time_seconds'] = time.time() - execution_start
+                metadata.setdefault('retrieved_documents', [])
+                return RAGResponse(
+                    answer=retrieval_error,
+                    citations=[],
+                    metadata=metadata
+                )
 
-            # If not enough indexed docs, attempt enrichment
-            if not allowed_to_search:
-                # Try loading from consolidated file
-                if file_count >= MIN_DB_DOCUMENTS:
-                    self._log_step("query", f"Consolidated file count: {file_count} -- loading into index")
-                    try:
-                        docs = self.crawler_caller.load_consolidated_documents()
-                        if docs:
-                            self.pipeline.index(docs)
-                            allowed_to_search = True
-                            metadata['auto_crawled'] = True
-                            self._log_step("query", f"Loaded and indexed {len(docs)} documents from documents.json")
-                    except Exception as e:
-                        logger.warning(f"Failed to index consolidated documents: {e}")
-
-                # Try consolidating raw files if present
-                if  not allowed_to_search and raw_count >= MIN_DB_DOCUMENTS:
-                    self._log_step("query", f"Raw documents count: {raw_count} -- consolidating and indexing")
-                    try:
-                        docs = self.crawler_caller.consolidate_raw_to_documents()
-                        if docs:
-                            self.crawler_caller.save_consolidated_documents(docs)  # Save for future sessions
-                            self.pipeline.index(docs)
-                            allowed_to_search = True
-                            metadata['auto_crawled'] = True
-                            self._log_step("query", f"Consolidated and indexed {len(docs)} raw documents")
-                    except Exception as e:
-                        logger.warning(f"Failed to consolidate/index raw documents: {e}")
-
-                # As a last resort, trigger crawlers if allowed
-                if not allowed_to_search and auto_reload_empty:
-                    self._log_step("query", "Below quota — triggering crawlers to obtain more documents")
-                    try:
-                        load_result = self.load_documents_from_crawlers(force_recrawl=True)
-                        if load_result.get('success') and load_result.get('indexed_documents', 0) >= MIN_DB_DOCUMENTS:
-                            allowed_to_search = True
-                            metadata['auto_crawled'] = True
-                            self._log_step("query", f"Crawlers loaded {load_result.get('indexed_documents')} documents")
-                        else:
-                            self._log_step("query", f"Crawler attempt did not reach quota: {load_result.get('message')}")
-                    except Exception as e:
-                        logger.warning(f"Crawlers failed during enrichment attempt: {e}")
-
-            db_health = self.check_database_health()
-
-            # If still not allowed, return a clear RAGResponse if DB is empty or proceed with a warning if there are some documents
-            if not allowed_to_search:
-                vec_count = int(db_health.get('document_count', 0))
-                self._log_step("query", f"Insufficient documents ({vec_count}) after enrichment attempts")
-
-                if vec_count < 1:
-                    return RAGResponse(
-                        answer="Database is empty. A search is impossible to perform",
-                        citations=[],
-                        metadata=metadata
-                    )
-
-            # Step 2: Local search
-            local_results = self._search_locally(question, max_results=max_local_results)
-            # Ensure content field is present for RAG
-            for result in local_results:
-                if "content" not in result and "snippet" in result:
-                    result["content"] = result.pop("snippet") # Legacy consistency
-            self._log_step("query", f"Local search returned {len(local_results)} results")
-
-            # Step 3: Insufficiency detection
-            insufficiency = self.detect_insufficiency_for_query(question, local_results)
-            metadata['insufficiency_detected'] = insufficiency['is_insufficient']
-            metadata['insufficiency_reasons'] = insufficiency['reasons']
-            metadata['local_documents'] = len(local_results)
-
-            # Step 4: Web search if needed
-            web_results = []
-            if use_web_search and insufficiency['is_insufficient']:
-                self._log_step("query", "Insufficiency detected, performing web search")
-                web_results = self._search_web(question)
-                metadata['web_documents'] = len(web_results)
-                self._log_step("query", f"Web search returned {len(web_results)} results")
-            
-            # Persist web results to documents.json for future sessions
-            if web_results:
-                web_docs = [
-                    {
-                        "id": r.get('id', ''),
-                        "title": clean_scraped_text(str(r.get("title", ""))),
-                        "content": clean_scraped_text(str(r.get("content", ""))),
-                        "url": r.get("url"),
-                        "source": "web_augment",
-                        "date": datetime.now(timezone.utc).isoformat(),
-                    }
-                    for i, r in enumerate(web_results)
-                ]
-                try:
-                    self.crawler_caller.merge_documents(web_docs)
-                    self._log_step(
-                        "query",
-                        f"Merged {len(web_docs)} web results to documents.json "
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to persist web results: {e}")
-    
-            # Step 5: Consolidate documents
-            all_documents = self._consolidate_documents(local_results, web_results)
-            metadata['total_documents_used'] = len(all_documents)
             self._log_step("query", f"Consolidated {len(all_documents)} documents for RAG")
 
-            # Step 6: RAG generation
-            if not all_documents:
-                rag_response = RAGResponse(
-                    answer="No relevant documents found to generate an answer.",
-                    citations=[]
-                )
-            else:
-                rag_response = self.rag_module.generate(
-                    query=question,
-                    documents=all_documents
-                )
+            # RAG generation
+            rag_begin = time.time()
+            rag_response = self.augment_response(question=question, documents=all_documents)
 
-            execution_time = time.time() - execution_start
-            metadata['generation_time_seconds'] = execution_time
+            metadata['generation_time_seconds'] = time.time() - rag_begin
+            metadata['retrieved_documents'] = all_documents
 
             rag_response = RAGResponse(
                 answer=rag_response.answer,
@@ -572,12 +656,13 @@ class MainOrchestator:
                 metadata=metadata
             )
 
-            self._log_step("query", f"Query completed in {execution_time:.2f}s")
+            self._log_step("query", f"Query completed in {time.time() - execution_start:.2f}s")
             return rag_response
 
         except Exception as e:
             logger.error(f"Query execution failed: {str(e)}", exc_info=True)
             metadata['generation_time_seconds'] = time.time() - execution_start
+            metadata['retrieved_documents'] = []
             return RAGResponse(
                 answer=f"Error processing query: {str(e)}",
                 citations=[],
@@ -609,7 +694,7 @@ class MainOrchestator:
     def _search_web(
         self,
         query: str,
-        max_results: int = 3
+        max_results: int= 10
     ) -> List[Dict[str, Any]]:
         """
         Execute web search via DuckDuckGo.
