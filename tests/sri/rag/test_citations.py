@@ -9,6 +9,7 @@ Tests cover:
 """
 
 from src.rag.citations import CitationExtractor
+from src.rag.config import config as rag_config
 
 
 class TestCitationExtraction:
@@ -123,7 +124,7 @@ class TestCitationEnrichment:
         assert enriched[0].title == "Python Guide"
         assert enriched[0].url == "https://example.com/python"
         assert enriched[0].source == "tutorial"
-        assert len(enriched[0].snippet) > 0
+        assert len(enriched[0].snippet or "") > 0
 
     def test_enrich_multiple_citations(self):
         """Should enrich multiple citations."""
@@ -153,8 +154,9 @@ class TestCitationEnrichment:
 
         text, enriched = CitationExtractor.enrich_citations("", citations, documents)
 
-        snippet = enriched[0].snippet
-        assert len(snippet) <= 200  # Snippet truncated to 200 chars
+        snippet = enriched[0].snippet or ""
+        assert len(snippet) <= rag_config.max_snippet_length + 3  # Snippet truncated to max_snippet_length chars + "..."
+        assert snippet.endswith("...")
 
     def test_enrich_missing_fields(self):
         """Should handle documents with missing optional fields."""

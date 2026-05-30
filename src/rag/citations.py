@@ -59,6 +59,7 @@ class CitationExtractor:
         valid_doc_ids = {doc.get("id") or doc.get("doc_id") for doc in documents if doc.get("id") or doc.get("doc_id")}
 
         valid_citations: List[str] = []
+        replacements: Dict[str, str] = {}
 
         for cid in unique_ids:
             # If citation directly matches a document id, accept it
@@ -75,11 +76,18 @@ class CitationExtractor:
                         mapped = documents[idx].get('id') or documents[idx].get('doc_id')
                         if mapped:
                             valid_citations.append(mapped)
-                            #TODO: Replace the original [doc_idx] with [mapped] in the answer text for better clarity
+                            replacements[cid] = mapped
                             logger.debug(f"Mapped positional citation {cid} -> {mapped}")
                             continue
                 except Exception:
                     pass
+
+        if replacements:
+            def _replace_match(match: re.Match[str]) -> str:
+                citation_id = match.group(1)
+                return f"[{replacements.get(citation_id, "")}]"
+
+            answer = re.sub(CitationExtractor.CITATION_PATTERN, _replace_match, answer)
 
         logger.debug(
             "Normalized %s citation ids into %s valid ids",
@@ -204,7 +212,9 @@ class CitationExtractor:
                 continue
 
             doc = doc_map[citation_id]
-            snippet = doc.get("content", "")[:rag_config.max_snippet_length]
+            snippet = doc.get("content", "")
+            if len(snippet) > rag_config.max_snippet_length:
+                snippet = snippet[:rag_config.max_snippet_length] + "..."
             enriched_citation = {
                 "doc_id": citation_id,
                 "title": doc.get("title", "Unknown"),

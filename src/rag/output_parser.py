@@ -198,7 +198,7 @@ class OutputParser:
         )
 
         if answer_match:
-            answer = answer_match.group(1)
+            answer = answer_match.group(1)[:rag_config.response_char_limit]
         else:
             # Use first rag_config.response_char_limit chars as answer
             answer = text[:rag_config.response_char_limit]

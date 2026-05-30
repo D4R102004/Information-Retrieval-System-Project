@@ -118,7 +118,7 @@ class RAGModule:
         # Transform pipeline results to RAG document format
         documents = [
             {
-                "id": result.get("doc_id"),
+                "id": result.get("doc_id") or result.get("id", "unknown"),
                 "title": result.get("title", "Untitled"),
                 "content": result.get("content", ""),
                 "url": result.get("url"),
