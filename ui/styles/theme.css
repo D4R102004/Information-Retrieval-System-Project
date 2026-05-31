@@ -1,0 +1,14 @@
+:root {
+  --ui-bg: #ffffff;
+  --ui-surface: #f8fafc;
+  --ui-text: #0f172a;
+  --ui-muted: #475569;
+  --ui-primary: #1d4ed8;
+  --ui-accent: #0f766e;
+  --ui-border: #e2e8f0;
+}
+
+body {
+  background: var(--ui-bg);
+  color: var(--ui-text);
+}
