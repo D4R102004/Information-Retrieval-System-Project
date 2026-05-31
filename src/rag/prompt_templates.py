@@ -12,9 +12,21 @@ Templates are interchangeable at runtime using Factory pattern.
 from abc import ABC, abstractmethod
 from typing import List, Dict
 import logging
+import re
+
+from .config import config as rag_config
 
 logger = logging.getLogger(__name__)
-MAX_CONTENT_SIZE = 500
+EMOJI_PATTERN = re.compile(
+    r"[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F1E6-\U0001F1FF]",
+    flags=re.UNICODE,
+)
+
+
+def _strip_emojis(text: str) -> str:
+    """Remove common emoji symbols from text."""
+    return EMOJI_PATTERN.sub("", text)
+
 
 class PromptTemplate(ABC):
     """Abstract base for prompt generation strategies."""
@@ -45,7 +57,7 @@ JSON Response:"""
         pass
 
     def _format_context(
-        self, documents: List[Dict], max_chars: int = 3000
+        self, documents: List[Dict], max_chars: int = rag_config.max_doc_content_length * 5
     ) -> str:
         """Format documents into context string.
 
@@ -62,10 +74,12 @@ JSON Response:"""
         for doc in documents:
             # Build document entry
             doc_id = doc.get("id", "unknown")
-            title = doc.get("title", "Untitled")
-            content = doc.get("content", "")[:MAX_CONTENT_SIZE]  # Truncate
+            if doc_id == "unknown":                     # Legacy name in case of normalization
+                doc_id = doc.get("doc_id", "unknown")   # failure when receiving documents
+            title = _strip_emojis(str(doc.get("title", "Untitled")))
+            content = _strip_emojis(str(doc.get("content", "")))[:rag_config.max_doc_content_length]
 
-            doc_text = f"[{doc_id}] {title}\n{content}\n"
+            doc_text = f"ID: [{doc_id}]\nTITLE: {title}\nCONTENT:\n{content}\n"
 
             # Check if adding this doc would exceed limit
             if total_chars + len(doc_text) > max_chars:
@@ -111,7 +125,7 @@ class DomainSpecificTemplate(PromptTemplate):
         """Initialize domain-specific template."""
         self.system_prompt = (
             "You are a technical assistant specialized in software and technology. "
-            "Your role is to provide accurate, informative answers based on the provided documents. "
+            "Your role is to provide simple, accurate, informative answers based on the provided documents. "
         )
         logger.debug("Initialized DomainSpecificTemplate")
 
@@ -129,9 +143,11 @@ class DomainSpecificTemplate(PromptTemplate):
 
 ## Instructions:
 - Provide a comprehensive answer based on the documents
-- Always cite sources as [doc_id] when referencing specific information
+- Always cite sources plainly as [doc_id] when referencing specific information (e.g. "Python is a programming language [doc_1] used in...")
 - If information is not in the documents, state that clearly
-- Be precise and avoid speculation
+- Be precise, and avoid speculation and redundancy
+- Only refer to a document when citing it, avoid referencing it or its title directly in your answer
+- Only use [] when citing, do not use in any other case
 
 ## {self.json_response if require_json else "Answer:"}"""]
 
@@ -149,7 +165,7 @@ class ChainOfThoughtTemplate(PromptTemplate):
         """Initialize domain-specific template."""
         self.system_prompt = (
             "You are a technical assistant specialized in software and technology. "
-            "Your role is to provide accurate, informative answers based on the provided documents. "
+            "Your role is to provide simple, accurate, informative answers based on the provided documents. "
         )
         logger.debug("Initialized ChainOfThoughtTemplate")
 
@@ -178,9 +194,11 @@ Think through this step-by-step:
 4. **Answer Construction:** Generate a comprehensive answer with proper citations based on the analysis.
 {"\n5. **Citation Extraction:** Extract document IDs that support your answer\n" if require_json else ""}
 ## Answer Format:
-- Provide your answer with inline citations [doc_id]
+- Provide your answer with inline citations [doc_id] (e.g. "Python is a programming language [doc_1] used in...")
+- Only use [] when citing, do not use in any other case
 - Explain the reasoning when synthesizing multiple sources
-- Be precise and cite only when information comes from documents
+- Be precise and non-redundant, and cite only when information comes from documents
+- Only refer to a document when citing it, avoid referencing it or its title directly in your answer
 
 ## {self.json_response if require_json else "Answer:"}"""]
 

@@ -19,6 +19,7 @@ import numpy as np
 from typing import List, Dict, Optional, Tuple
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
+import logging
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +31,8 @@ try:
     _CHROMA_AVAILABLE = True
 except ImportError:
     _CHROMA_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 class LocalEmbedder:
@@ -90,7 +93,7 @@ class VectorStore:
         collection_name: str = "tech_software",
         persist_dir: str = "data/index",
         embedding_dim: int = 256,
-        use_chromadb: bool = False,
+        use_chromadb: bool = True,
     ):
         self.collection_name = collection_name
         self.persist_dir = persist_dir
@@ -124,7 +127,7 @@ class VectorStore:
             embedding_function=ef,
             metadata={"hnsw:space": "cosine"},
         )
-        print(f"[VectorDB] ChromaDB inicializado — colección: {self.collection_name}")
+        print(f"[VectorDB] ChromaDB initialized -- collection: {self.collection_name}")
 
     # ------------------------------------------------------------------
     # Operaciones CRUD
@@ -248,6 +251,41 @@ class VectorStore:
         """Número de documentos almacenados."""
         return len(self._ids)
 
+    def clear_all(self) -> bool:
+        """
+        Remove all documents from vector store permanently.
+
+        Clears both local backend and ChromaDB collection (if available).
+
+        Returns:
+            True if successful, False if error occurred
+        """
+        try:
+            # Clear local storage
+            self._ids.clear()
+            self._embeddings.clear()
+            self._metadatas.clear()
+            self._documents.clear()
+
+            # Clear ChromaDB if available
+            if self._use_chroma and self._chroma_collection:
+                # Delete entire collection and reinitialize
+                try:
+                    import chromadb
+
+                    client = chromadb.PersistentClient(path=self.persist_dir)
+                    client.delete_collection(name=self.collection_name)
+                    self._init_chromadb()
+                except Exception as e:
+                    logger.warning(f"Could not clear ChromaDB collection: {e}")
+
+            logger.info("[VectorDB] All documents cleared")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error clearing vector store: {e}")
+            return False
+
     def list_ids(self) -> List[str]:
         return list(self._ids)
 
@@ -306,3 +344,12 @@ class VectorStore:
         content = doc.get("content", "") or ""
         tags    = " ".join(doc.get("tags", [])) if doc.get("tags") else ""
         return f"{title} {content} {tags}".strip()
+
+
+    # ------------------------------------------------------------------
+    # Verificaciones externas
+    # ------------------------------------------------------------------
+
+    def chroma_available(self) -> bool:
+        """Indica si ChromaDB está disponible en el entorno."""
+        return _CHROMA_AVAILABLE and self._use_chroma and self._chroma_collection is not None

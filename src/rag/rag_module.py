@@ -106,25 +106,26 @@ class RAGModule:
         if documents is None:
             if self.pipeline:
                 try:
-                    raw_results = self.pipeline.search(query, top_k=10)
-                    # Transform pipeline results to RAG document format
-                    documents = [
-                        {
-                            "id": result.get("doc_id"),
-                            "title": result.get("title", "Untitled"),
-                            "content": result.get("snippet", ""),
-                            "url": result.get("url"),
-                            "score": result.get("score"),
-                        }
-                        for result in raw_results
-                    ]
-                    logger.info(f"Retrieved {len(documents)} documents via SRIPipeline")
+                    documents = self.pipeline.search(query, top_k=10)
+                    logger.info(f"Retrieved {len(documents) if documents else 0} documents via SRIPipeline")
                 except Exception as e:
                     logger.warning(f"Pipeline retrieval failed: {e}. Using pure generation mode.")
                     documents = []
             else:
                 documents = []
                 logger.debug("No documents provided and no pipeline - using pure generation mode")
+
+        # Transform pipeline results to RAG document format
+        documents = [
+            {
+                "id": result.get("doc_id") or result.get("id", "unknown"),
+                "title": result.get("title", "Untitled"),
+                "content": result.get("content", ""),
+                "url": result.get("url"),
+                "score": result.get("score"),
+            }
+            for result in (documents if documents else [])
+        ]
 
         logger.info(
             f"Generating answer for query: '{query[:60]}...' "
@@ -152,23 +153,18 @@ class RAGModule:
 
             # Step 3: Parse output to structured format
             parse_start = time.time()
-            try:
-                # Pass documents to parser for citation enrichment
-                rag_response = self._parse_response(raw_response, documents)
-            except Exception as e:
-                logger.warning(f"Response parsing error: {e}. Using fallback parser.")
-                rag_response = self.parser.parse(raw_response, documents)
-
+            # Pass documents to parser for citation enrichment
+            rag_response = self._parse_response(raw_response, documents)
+            
             parse_time = time.time() - parse_start
 
             # Step 4: Recover citations from answer text if parser returned none
             citations_start = time.time()
             if not rag_response.citations and rag_response.answer and documents:
-                citation_ids = CitationExtractor.extract_citations(
+                answer, citations = CitationExtractor.extract_citations(
                     rag_response.answer, documents
                 )
-                recovered_citations = CitationExtractor.citations_from_ids(citation_ids, documents)
-                rag_response = RAGResponse(answer=rag_response.answer, citations=recovered_citations)
+                rag_response = RAGResponse(answer=answer, citations=citations)
 
             citations_time = time.time() - citations_start
 

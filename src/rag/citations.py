@@ -6,12 +6,12 @@ Ensures sources are correctly attributed and validated against retrieved documen
 """
 
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from pydantic import BaseModel, Field, ConfigDict
 import logging
+from .config import config as rag_config
 
 logger = logging.getLogger(__name__)
-
 
 class Citation(BaseModel):
     """Citation object linking to source document."""
@@ -32,40 +32,74 @@ class CitationExtractor:
     """Regex pattern for [doc_id] citation format."""
 
     @staticmethod
-    def normalize_citation_ids(
-        citation_ids: List[str], documents: Optional[List[Dict]] = None
-    ) -> List[str]:
+    def _normalize_citation_ids(
+        answer: str, citation_ids: List[str], documents: Optional[List[Dict]] = None
+    ) -> Tuple[str, List[str]]:
         """
         Normalize citation IDs by deduplicating and optionally validating.
 
         Args:
+            answer: Generated answer text (for potential in-place citation ID replacement)
             citation_ids: Candidate citation IDs
             documents: Optional documents used to validate citations
 
         Returns:
-            Ordered, unique citation IDs. If documents are provided,
-            only IDs present in the document set are returned.
+            Answer text (potentially with normalized citation IDs) and
+            ordered, unique citation IDs. If documents are provided,
+            only IDs present in the document set are returned and
+            answer is not modified.
         """
         # Remove duplicates while preserving order
         unique_ids = list(dict.fromkeys(citation_ids))
 
         if not documents:
-            return unique_ids
+            return answer, unique_ids
 
-        valid_doc_ids = {doc.get("id") for doc in documents if doc.get("id")}
-        valid_citations = [cid for cid in unique_ids if cid in valid_doc_ids]
+        # Build set of known document ids
+        valid_doc_ids = {doc.get("id") or doc.get("doc_id") for doc in documents if doc.get("id") or doc.get("doc_id")}
+
+        valid_citations: List[str] = []
+        replacements: Dict[str, str] = {}
+
+        for cid in unique_ids:
+            # If citation directly matches a document id, accept it
+            if cid in valid_doc_ids:
+                valid_citations.append(cid)
+                continue
+
+            # Support positional citation formats like doc_3 or id_5 -> map to documents[2]/documents[4]
+            match = re.match(r'^(?:doc|id)_(\d+)$', cid)
+            if match:
+                try:
+                    idx = int(match.group(1)) - 1 # Convert to 0-based index
+                    if 0 <= idx < len(documents):
+                        mapped = documents[idx].get('id') or documents[idx].get('doc_id')
+                        if mapped:
+                            valid_citations.append(mapped)
+                            replacements[cid] = mapped
+                            logger.debug(f"Mapped positional citation {cid} -> {mapped}")
+                            continue
+                except Exception:
+                    pass
+
+        if replacements:
+            def _replace_match(match: re.Match[str]) -> str:
+                citation_id = match.group(1)
+                return f"[{replacements.get(citation_id, "")}]"
+
+            answer = re.sub(CitationExtractor.CITATION_PATTERN, _replace_match, answer)
 
         logger.debug(
             "Normalized %s citation ids into %s valid ids",
             len(citation_ids),
             len(valid_citations),
         )
-        return valid_citations
+        return answer, valid_citations
 
     @staticmethod
-    def extract_citations(text: str, documents: List[Dict]) -> List[str]:
+    def extract_citations(text: str, documents: List[Dict]) -> Tuple[str, List[Citation]]:
         """
-        Extract citation IDs from text using [doc_id] format.
+        Extract citations from text using [doc_id] format.
 
         Validates citations against available documents to ensure
         accuracy and prevent hallucinations.
@@ -75,29 +109,45 @@ class CitationExtractor:
             documents: Available documents for validation
 
         Returns:
-            List of cited document IDs (deduplicated, preserving order)
+            Answer text and list of enriched Citation objects.
 
         Example:
             >>> text = "Python is great [doc_001]. It has libraries [doc_002]."
             >>> docs = [{"id": "doc_001"}, {"id": "doc_002"}]
             >>> CitationExtractor.extract_citations(text, docs)
-            ['doc_001', 'doc_002']
+            ('Python is great [doc_001]. It has libraries [doc_002].', [Citation(...)])
         """
-        # Find all citation patterns
-        matches = re.findall(CitationExtractor.CITATION_PATTERN, text)
+        # Remove fenced code blocks (triple backticks) to ignore bracketed expressions inside code samples.
+        try:
+            text_no_code = re.sub(r"```[\s\S]*?```", "", text)
+        except Exception:
+            text_no_code = text
 
-        unique_citations = CitationExtractor.normalize_citation_ids(matches, documents)
+        # Find all citation patterns outside code blocks
+        matches = re.findall(CitationExtractor.CITATION_PATTERN, text_no_code)
+
+        text, unique_citation_ids = CitationExtractor._normalize_citation_ids(text, matches, documents)
+
+        if not documents:
+            citations = [Citation(doc_id=cid, title=f"Document {cid}", source="extracted") for cid in unique_citation_ids]
+            logger.debug(
+                f"Extracted {len(citations)} citations from {len(matches)} matches (no documents provided)"
+            )
+            return text, citations[:rag_config.max_cites]
+
+        enriched_dicts = CitationExtractor._enrich_citations_dicts(unique_citation_ids, documents)
+        citations = [Citation(**citation_dict) for citation_dict in enriched_dicts]
 
         logger.debug(
-            f"Extracted {len(unique_citations)} citations from {len(matches)} matches"
+            f"Extracted {len(citations)} citations from {len(matches)} matches"
         )
 
-        return unique_citations
+        return text, citations[:rag_config.max_cites]
 
     @staticmethod
     def citations_from_ids(
-        citation_ids: List[str], documents: Optional[List[Dict]] = None
-    ) -> List[Citation]:
+        text: str, citation_ids: List[str], documents: Optional[List[Dict]] = None
+    ) -> Tuple[str, List[Citation]]:
         """
         Convert citation ID strings to enriched Citation objects.
 
@@ -106,20 +156,21 @@ class CitationExtractor:
         - Without documents: Creates minimal Citation objects
 
         Args:
+            text: Generated text containing citations
             citation_ids: List of document IDs from LLM
             documents: Optional documents for validation and enrichment
 
         Returns:
-            List of enriched Citation objects
+            Tuple of (modified text, list of enriched Citation objects)
         """
-        normalized_ids = CitationExtractor.normalize_citation_ids(citation_ids)
+        text, normalized_ids = CitationExtractor._normalize_citation_ids(text, citation_ids, documents)
 
         if not documents:
             # No documents - create minimal Citations from IDs
-            return [
+            return text, [
                 Citation(doc_id=cid, title=f"Document {cid}", source="extracted")
                 for cid in normalized_ids
-            ]
+            ][:rag_config.max_cites]
 
         if len(normalized_ids) < len(citation_ids):
             filtered_out = len(citation_ids) - len(normalized_ids)
@@ -129,7 +180,7 @@ class CitationExtractor:
             )
 
         enriched_dicts = CitationExtractor._enrich_citations_dicts(normalized_ids, documents)
-        return [Citation(**citation_dict) for citation_dict in enriched_dicts]
+        return text, [Citation(**citation_dict) for citation_dict in enriched_dicts][:rag_config.max_cites]
 
     @staticmethod
     def _enrich_citations_dicts(
@@ -161,7 +212,9 @@ class CitationExtractor:
                 continue
 
             doc = doc_map[citation_id]
-            snippet = doc.get("snippet") or doc.get("content", "")[:200]
+            snippet = doc.get("content", "")
+            if len(snippet) > rag_config.max_snippet_length:
+                snippet = snippet[:rag_config.max_snippet_length] + "..."
             enriched_citation = {
                 "doc_id": citation_id,
                 "title": doc.get("title", "Unknown"),
@@ -182,17 +235,20 @@ class CitationExtractor:
 
     @staticmethod
     def enrich_citations(
+        text: str,
         citations: List[str],
         documents: List[Dict],
-    ) -> List[Citation]:
+    ) -> Tuple[str, List[Citation]]:
         """
         Create rich citation objects with document metadata.
 
         Args:
+            text: Generated text containing citations (for potential in-place ID normalization)
             citations: List of document IDs
             documents: Available documents with metadata
 
         Returns:
+            Normalized text and
             List of enriched Citation objects with:
                 - doc_id: Document identifier
                 - title: Document title
@@ -206,9 +262,9 @@ class CitationExtractor:
             >>> CitationExtractor.enrich_citations(citations, docs)
             [Citation(doc_id="doc_001", title="Python Basics", ...)]
         """
-        normalized_citations = CitationExtractor.normalize_citation_ids(citations, documents)
+        text, normalized_citations = CitationExtractor._normalize_citation_ids(text, citations, documents)
         enriched_dicts = CitationExtractor._enrich_citations_dicts(normalized_citations, documents)
-        return [Citation(**citation_dict) for citation_dict in enriched_dicts]
+        return text, [Citation(**citation_dict) for citation_dict in enriched_dicts]
 
     @staticmethod
     def validate_citations(

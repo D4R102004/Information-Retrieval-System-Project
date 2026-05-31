@@ -171,6 +171,58 @@ class TestOutputParserParsing:
         assert response.citations[0].url == "https://example.com/python-guide"
         assert response.citations[0].source == "documentation"
 
+    def test_extract_citations_returns_enriched_citations(self):
+        """Should return enriched Citation objects directly from extract_citations."""
+        text = "Python is great [doc_001] and ML is useful [id_2]."
+        documents = [
+            {
+                "id": "doc_001",
+                "title": "Python Guide",
+                "url": "https://example.com/python-guide",
+                "content": "Python is a versatile language.",
+                "source": "documentation",
+                "score": 0.95,
+            },
+            {
+                "id": "doc_002",
+                "title": "ML Guide",
+                "url": "https://example.com/ml-guide",
+                "content": "Machine learning concepts.",
+                "source": "documentation",
+                "score": 0.90,
+            },
+        ]
+
+        answer, citations = CitationExtractor.extract_citations(text, documents)
+
+        assert answer == text
+        assert len(citations) == 2
+        assert [c.doc_id for c in citations] == ["doc_001", "doc_002"]
+        assert citations[0].title == "Python Guide"
+        assert citations[1].title == "ML Guide"
+
+    def test_extract_citations_ignores_code_blocks(self):
+        """Should ignore bracketed expressions inside fenced code blocks."""
+        text = (
+            "Explanation [doc_001].\n\n"
+            "```python\n"
+            "code_sample = [doc_999]\n"
+            "more = [id_2]\n"
+            "```\n\n"
+            "Another reference [doc_002]."
+        )
+
+        documents = [
+            {"id": "doc_001", "title": "Doc One", "content": "First document"},
+            {"id": "doc_002", "title": "Doc Two", "content": "Second document"},
+        ]
+
+        answer, citations = CitationExtractor.extract_citations(text, documents)
+
+        assert answer == text
+        assert [c.doc_id for c in citations] == ["doc_001", "doc_002"]
+        assert all(c.doc_id != "doc_999" for c in citations)
+
     def test_parse_valid_json_filters_hallucinated_citations(self):
         """Should drop citations that are not present in the documents."""
         valid_json = json.dumps({
@@ -257,6 +309,20 @@ class TestOutputParserParsing:
         assert doc_ids == {"doc_001", "doc_002"}
         assert {c.title for c in response.citations} == {"Python Guide", "ML Guide"}
 
+    def test_extract_citations_maps_positional_ids(self):
+        """Should map [doc_i] and [id_i] to the i-th document in the list."""
+        text = "First [doc_1], second [id_2], third [doc_3]."
+        documents = [
+            {"id": "alpha", "title": "Alpha", "content": "A"},
+            {"id": "beta", "title": "Beta", "content": "B"},
+            {"id": "gamma", "title": "Gamma", "content": "C"},
+        ]
+
+        answer, citations = CitationExtractor.extract_citations(text, documents)
+
+        assert answer == text
+        assert [c.doc_id for c in citations] == ["alpha", "beta", "gamma"]
+
 
 class TestResponseValidation:
     """Test response validation."""
@@ -326,6 +392,21 @@ class TestFallbackParsing:
         assert "source1" in doc_ids
         assert "source2" in doc_ids
 
+    def test_fallback_ignores_code_block_citations(self):
+        """Should ignore citations that appear only inside fenced code blocks."""
+        text = (
+            "Outside citation [source1].\n"
+            "```text\n"
+            "inside_code [source2]\n"
+            "```"
+        )
+
+        response = OutputParser._fallback_parse(text)
+
+        doc_ids = [c.doc_id for c in response.citations]
+        assert "source1" in doc_ids
+        assert "source2" not in doc_ids
+
     def test_fallback_limits_citations(self):
         """Should limit number of extracted citations."""
         # Create text with many citations
@@ -368,8 +449,9 @@ class TestFallbackParsing:
             {"id": "doc_002", "title": "ML Guide", "url": "https://example.com/ml"},
         ]
 
-        citations = CitationExtractor.citations_from_ids(citation_ids, documents)
+        answer, citations = CitationExtractor.citations_from_ids("Python [doc_001] and ML [doc_002]", citation_ids, documents)
 
+        assert answer == "Python [doc_001] and ML [doc_002]"
         assert len(citations) == 2
         assert {c.doc_id for c in citations} == {"doc_001", "doc_002"}
 

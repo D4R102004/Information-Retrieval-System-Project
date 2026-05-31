@@ -9,6 +9,7 @@ Tests cover:
 """
 
 from src.rag.citations import CitationExtractor
+from src.rag.config import config as rag_config
 
 
 class TestCitationExtraction:
@@ -17,56 +18,58 @@ class TestCitationExtraction:
     def test_extract_single_citation(self):
         """Should extract single citation."""
         text = "Python is great [doc_001] for AI."
-        documents = [{"id": "doc_001", "title": "Python"}]
+        documents = [{"id": "doc_001", "title": "Python", "content": "Python guide"}]
 
-        citations = CitationExtractor.extract_citations(text, documents)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
 
         assert len(citations) == 1
-        assert "doc_001" in citations
+        assert citations[0].doc_id == "doc_001"
 
     def test_extract_multiple_citations(self):
         """Should extract multiple citations."""
         text = "Python [doc_001] is used for ML [doc_002] and AI [doc_003]."
         documents = [
-            {"id": "doc_001"},
-            {"id": "doc_002"},
-            {"id": "doc_003"},
+            {"id": "doc_001", "title": "Doc1", "content": "Content1"},
+            {"id": "doc_002", "title": "Doc2", "content": "Content2"},
+            {"id": "doc_003", "title": "Doc3", "content": "Content3"},
         ]
 
-        citations = CitationExtractor.extract_citations(text, documents)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
 
         assert len(citations) == 3
-        assert "doc_001" in citations
-        assert "doc_002" in citations
-        assert "doc_003" in citations
+        doc_ids = [c.doc_id for c in citations]
+        assert "doc_001" in doc_ids
+        assert "doc_002" in doc_ids
+        assert "doc_003" in doc_ids
 
     def test_extract_citations_deduplicates(self):
         """Should remove duplicate citations."""
         text = "Python [doc_001]. More Python [doc_001]. End [doc_001]."
-        documents = [{"id": "doc_001"}]
+        documents = [{"id": "doc_001", "title": "Test", "content": "Content"}]
 
-        citations = CitationExtractor.extract_citations(text, documents)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
 
         assert len(citations) == 1
-        assert citations[0] == "doc_001"
+        assert citations[0].doc_id == "doc_001"
 
     def test_extract_citations_invalid_ignored(self):
         """Should ignore citations not in documents."""
         text = "Python [doc_001] and [doc_invalid]."
-        documents = [{"id": "doc_001"}]
+        documents = [{"id": "doc_001", "title": "Test", "content": "Content"}]
 
-        citations = CitationExtractor.extract_citations(text, documents)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
 
         assert len(citations) == 1
-        assert "doc_001" in citations
-        assert "doc_invalid" not in citations
+        doc_ids = [c.doc_id for c in citations]
+        assert "doc_001" in doc_ids
+        assert "doc_invalid" not in doc_ids
 
     def test_extract_no_citations(self):
         """Should return empty list when no citations."""
         text = "Python is a language. No citations here."
-        documents = [{"id": "doc_001"}]
+        documents = [{"id": "doc_001", "title": "Test", "content": "Content"}]
 
-        citations = CitationExtractor.extract_citations(text, documents)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
 
         assert len(citations) == 0
 
@@ -74,25 +77,26 @@ class TestCitationExtraction:
         """Should preserve order of citations."""
         text = "[doc_c] then [doc_a] then [doc_b]."
         documents = [
-            {"id": "doc_a"},
-            {"id": "doc_b"},
-            {"id": "doc_c"},
+            {"id": "doc_a", "title": "A", "content": "Content"},
+            {"id": "doc_b", "title": "B", "content": "Content"},
+            {"id": "doc_c", "title": "C", "content": "Content"},
         ]
 
-        citations = CitationExtractor.extract_citations(text, documents)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
 
-        assert citations == ["doc_c", "doc_a", "doc_b"]
+        doc_ids = [c.doc_id for c in citations]
+        assert doc_ids == ["doc_c", "doc_a", "doc_b"]
 
     def test_extract_citations_various_ids(self):
         """Should handle various citation ID formats."""
         text = "Reference [001] and [retrieve_001] and [doc-mix_001]."
         documents = [
-            {"id": "001"},
-            {"id": "retrieve_001"},
-            {"id": "doc-mix_001"},
+            {"id": "001", "title": "T1", "content": "C1"},
+            {"id": "retrieve_001", "title": "T2", "content": "C2"},
+            {"id": "doc-mix_001", "title": "T3", "content": "C3"},
         ]
 
-        citations = CitationExtractor.extract_citations(text, documents)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
 
         assert len(citations) == 3
 
@@ -113,14 +117,14 @@ class TestCitationEnrichment:
             }
         ]
 
-        enriched = CitationExtractor.enrich_citations(citations, documents)
+        text, enriched = CitationExtractor.enrich_citations("", citations, documents)
 
         assert len(enriched) == 1
         assert enriched[0].doc_id == "doc_001"
         assert enriched[0].title == "Python Guide"
         assert enriched[0].url == "https://example.com/python"
         assert enriched[0].source == "tutorial"
-        assert len(enriched[0].snippet) > 0
+        assert len(enriched[0].snippet or "") > 0
 
     def test_enrich_multiple_citations(self):
         """Should enrich multiple citations."""
@@ -130,7 +134,7 @@ class TestCitationEnrichment:
             {"id": "doc_002", "title": "Doc2", "content": "Content2"},
         ]
 
-        enriched = CitationExtractor.enrich_citations(citations, documents)
+        text, enriched = CitationExtractor.enrich_citations("", citations, documents)
 
         assert len(enriched) == 2
         assert enriched[0].title == "Doc1"
@@ -148,10 +152,11 @@ class TestCitationEnrichment:
             }
         ]
 
-        enriched = CitationExtractor.enrich_citations(citations, documents)
+        text, enriched = CitationExtractor.enrich_citations("", citations, documents)
 
-        snippet = enriched[0].snippet
-        assert len(snippet) <= 200  # Snippet truncated to 200 chars
+        snippet = enriched[0].snippet or ""
+        assert len(snippet) <= rag_config.max_snippet_length + 3  # Snippet truncated to max_snippet_length chars + "..."
+        assert snippet.endswith("...")
 
     def test_enrich_missing_fields(self):
         """Should handle documents with missing optional fields."""
@@ -164,7 +169,7 @@ class TestCitationEnrichment:
             }
         ]
 
-        enriched = CitationExtractor.enrich_citations(citations, documents)
+        text, enriched = CitationExtractor.enrich_citations("", citations, documents)
 
         assert enriched[0].title == "Test"
         assert enriched[0].url == ""
@@ -183,7 +188,7 @@ class TestCitationEnrichment:
             }
         ]
 
-        enriched = CitationExtractor.enrich_citations(citations, documents)
+        text, enriched = CitationExtractor.enrich_citations("", citations, documents)
 
         assert enriched[0].score == 0.95
         assert enriched[0].date == "2024-01-15"
@@ -196,7 +201,7 @@ class TestCitationEnrichment:
             {"id": "doc_002", "title": "Doc2", "content": "Content2"},
         ]
 
-        enriched = CitationExtractor.enrich_citations(citations, documents)
+        text, enriched = CitationExtractor.enrich_citations("", citations, documents)
 
         assert len(enriched) == 2
         doc_ids = [c.doc_id for c in enriched]
@@ -280,16 +285,17 @@ class TestCitationExtractorIntegration:
             },
         ]
 
-        # Extract
-        citations = CitationExtractor.extract_citations(text, documents)
+        # Extract (already enriched)
+        answer, citations = CitationExtractor.extract_citations(text, documents)
         assert len(citations) == 2
+        assert citations[0].doc_id == "doc_001"
+        assert citations[1].doc_id == "doc_002"
 
-        # Validate
-        valid, invalid = CitationExtractor.validate_citations(citations, documents)
+        # Validate the extracted citation IDs
+        citation_ids = [c.doc_id for c in citations]
+        valid, invalid = CitationExtractor.validate_citations(citation_ids, documents)
         assert len(invalid) == 0
 
-        # Enrich
-        enriched = CitationExtractor.enrich_citations(valid, documents)
-        assert len(enriched) == 2
-        assert enriched[0].title == "Python Basics"
-        assert enriched[1].title == "ML Guide"
+        # Verify enrichment is already done
+        assert citations[0].title == "Python Basics"
+        assert citations[1].title == "ML Guide"

@@ -123,6 +123,7 @@ class LSIModel:
         scores = scores.ravel()
 
         # Rankear
+        from ranking.ranking import rag_config
         ranked_indices = np.argsort(scores)[::-1]
         results = []
         for idx in ranked_indices[:top_k]:
@@ -134,7 +135,7 @@ class LSIModel:
                 "doc_id": doc.get("id", str(idx)),
                 "title":  doc.get("title", "Sin título"),
                 "score":  round(sim, 4),
-                "snippet": self._snippet(doc.get("content", ""), 200),
+                "content": self._snippet(doc.get("content", ""), rag_config.max_doc_content_length),
                 "url":    doc.get("url", ""),
                 "tags":   doc.get("tags", []),
             })

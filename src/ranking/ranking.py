@@ -9,6 +9,7 @@ en el dominio de Tecnología y Software.
 import math
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
+from rag.config import config as rag_config # Para obtener la longitud máxima de contenido (en caracteres)
 
 
 # ---------------------------------------------------------------------------
@@ -125,7 +126,7 @@ class RankingEngine:
                     "title":        meta.get("title", "Sin título"),
                     "url":          meta.get("url", ""),
                     "tags":         meta.get("tags", []),
-                    "snippet":      (r.get("document") or "")[:200],
+                    "content":      (r.get("document") or "")[:rag_config.max_doc_content_length],
                     "lsi_score":    0.0,
                     "vector_score": r.get("score", 0.0),
                     "type":         meta.get("type", ""),
@@ -167,7 +168,7 @@ class RankingEngine:
                     "title":        meta.get("title", "Sin título"),
                     "url":          meta.get("url", ""),
                     "tags":         meta.get("tags", []),
-                    "snippet":      (r.get("document") or "")[:200],
+                    "content":      (r.get("document") or "")[:rag_config.max_doc_content_length],
                     "lsi_score":    0.0,
                     "vector_score": r.get("score", 0.0),
                     "type":         meta.get("type", ""),
