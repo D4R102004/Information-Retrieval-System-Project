@@ -8,7 +8,7 @@ import sys
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Dict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_DIR = PROJECT_ROOT / "src"
@@ -120,6 +120,9 @@ class OrchestratorService:
 
     def clear_all_indices(self) -> dict[str, Any]:
         return self._get_orchestrator().clear_all_indices()
+    
+    def check_database_health(self) -> Dict[str, Any]:
+        return self._get_orchestrator().check_database_health()
 
     def load_documents_from_crawlers(self, **kwargs: Any) -> dict[str, Any]:
         return self._get_orchestrator().load_documents_from_crawlers(**kwargs)
@@ -127,6 +130,11 @@ class OrchestratorService:
     def evaluate_test(self, test_spec: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._get_orchestrator().evaluate_test(test_spec)
 
+    def count_raw_documents(self, folder: str = "*") -> int:
+        return self._get_orchestrator().crawler_caller.count_raw_documents(folder.lower())
+    
+    def get_last_crawled_date(self, source: str) -> str:
+        return self._get_orchestrator().crawler_caller.get_last_crawled(source.lower())
 
 _ORCHESTRATOR_SERVICE: OrchestratorService | None = None
 

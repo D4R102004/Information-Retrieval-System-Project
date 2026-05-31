@@ -168,10 +168,10 @@ def format_rag_response(response: RAGResponse) -> str:
     shown_answer = "No answer was generated."
     if answer_provided:
         shown_answer = response.answer.strip()
-        #TODO: Remove on production - this is only to debug the raw answer before citation mapping
-        lines.append("#### RAW answer")
-        lines.append(shown_answer)
-        lines.append("")
+        # debug purposes only
+        # lines.append("#### RAW answer")
+        # lines.append(shown_answer)
+        # lines.append("")
 
     for citation_id, index in sorted(citation_map, key=lambda item: len(item[0]), reverse=True):
         shown_answer = re.sub(rf"\[{re.escape(citation_id)}\]", f"[{index}]", shown_answer)

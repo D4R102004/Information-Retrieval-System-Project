@@ -17,6 +17,9 @@ from .services.search_service import (
 )
 from .state import UIState, create_default_state
 from .utils import validate_query
+from .tabs.configuration import build_configuration_tab
+from .tabs.evaluation import build_evaluation_tab
+from .tabs.status import build_status_tab
 
 
 def _load_theme_css() -> str:
@@ -293,24 +296,13 @@ def create_app() -> gr.Blocks:
                 status_output.value = default_status
 
             with gr.Tab("Configuration"):
-                gr.Markdown("### Query parameters")
-                gr.Markdown(
-                    "This section will expose the settings described in Section 4.2, 4.3, 4.4, and 4.5 of the implementation plan."
-                )
-                gr.Markdown("### Database management")
-                gr.Markdown("Clear, load, and health-check actions will be wired in step 3.")
+                build_configuration_tab()
 
             with gr.Tab("Evaluation"):
-                gr.Markdown("### Evaluation workspace")
-                gr.Markdown(
-                    "This tab will host the default test execution path and the custom test designer described in Section 5."
-                )
+                build_evaluation_tab()
 
             with gr.Tab("System Status"):
-                gr.Markdown("### System diagnostics")
-                gr.Markdown(
-                    "This tab will summarize database counts, crawler status, and LLM connectivity as defined in Section 6."
-                )
+                build_status_tab()
 
         demo.load(
             fn=lambda current_state: _render_placeholder_results(current_state),
