@@ -196,22 +196,6 @@ def format_response(response: RAGResponse) -> None:
 
     print(shown_answer)
     
-    # Display metadata if available
-    if hasattr(response, 'metadata') and response.metadata:
-        print("\n--- METADATA ---")
-        metadata = response.metadata
-        if isinstance(metadata, dict):
-            print(f"Local documents used:  {metadata.get('local_documents', 0)}")
-            print(f"Web documents used:    {metadata.get('web_documents', 0)}")
-            print(f"Total documents:       {metadata.get('total_documents_used', 0)}")
-            
-            if metadata.get('insufficiency_detected'):
-                print(f"Insufficiency:         Yes")
-                print(f"Reasons:               {', '.join(metadata.get('insufficiency_reasons', []))}")
-            
-            if metadata.get('generation_time_seconds'):
-                print(f"Generation time:       {metadata['generation_time_seconds']:.2f}s")
-    
     # Display citations
     print("\n--- CITATIONS ---")
     if not response.citations:
@@ -232,6 +216,22 @@ def format_response(response: RAGResponse) -> None:
             print(f"[{idx}] {title} ({', '.join(metadata_parts)})")
             if snippet:
                 print(f"    Snippet: {snippet}")
+
+    # Display metadata if available
+    if hasattr(response, 'metadata') and response.metadata:
+        print("\n--- METADATA ---")
+        metadata = response.metadata
+        if isinstance(metadata, dict):
+            print(f"Local documents used:  {metadata.get('local_documents', 0)}")
+            print(f"Web documents used:    {metadata.get('web_documents', 0)}")
+            print(f"Total documents:       {metadata.get('total_documents_used', 0)}")
+            
+            if metadata.get('insufficiency_detected'):
+                print(f"Insufficiency:         Yes")
+                print(f"Reasons:               {', '.join(metadata.get('insufficiency_reasons', []))}")
+            
+            if metadata.get('generation_time_seconds'):
+                print(f"Generation time:       {metadata['generation_time_seconds']:.2f}s")
     
     print("=" * 70 + "\n")
 

@@ -123,6 +123,7 @@ class RAGModule:
                 "content": result.get("content", ""),
                 "url": result.get("url"),
                 "score": result.get("score"),
+                "source": result.get("source", "local"),
             }
             for result in (documents if documents else [])
         ]

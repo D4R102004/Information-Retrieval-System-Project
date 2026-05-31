@@ -59,7 +59,7 @@ class MainOrchestator:
         self.settings = CrawlerSettings()
         
         # Paths
-        self.data_dir = Path(__file__).parent.parent.parent / "data"
+        self.data_dir = Path(__file__).resolve().parent.parent / "data"
         self.documents_path = self.data_dir / "documents.json"
         self.raw_data_dir = self.data_dir / "raw"
         
@@ -241,6 +241,14 @@ class MainOrchestator:
                     self.pipeline.vstore, '_ids'
                 ) else 0
 
+            # Count documents loaded in classic local indices (inverted index / LSI)
+            try:
+                index_count = int(getattr(self.pipeline.indexer, 'num_docs', 0) or 0)
+            except Exception:
+                index_count = 0
+
+            effective_count = max(vec_count, index_count)
+
             # Check if documents file exists
             file_count = 0
             if self.documents_path.exists():
@@ -258,13 +266,15 @@ class MainOrchestator:
             except Exception as e:
                 logger.debug(f"Failed to check ChromaDB: {str(e)}")
 
-            is_empty = vec_count == 0 and file_count == 0
-            can_search = vec_count > MIN_DB_DOCUMENTS
+            is_empty = effective_count == 0 and file_count == 0
+            can_search = effective_count >= MIN_DB_DOCUMENTS
             status = 'healthy' if can_search else ('empty' if is_empty else 'degraded')
 
             return {
                 'is_empty': is_empty,
-                'document_count': vec_count,
+                'document_count': effective_count,
+                'vector_document_count': vec_count,
+                'indexed_document_count': index_count,
                 'file_document_count': file_count,
                 'can_search': can_search,
                 'has_chromadb': has_chromadb,
@@ -280,6 +290,129 @@ class MainOrchestator:
                 'can_search': False,
                 'has_chromadb': False,
                 'status': 'error'
+            }
+
+    def reindex_database(self, use_crawlers: bool = True, db_health: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Rebuild database indices to ensure minimum document threshold.
+
+        Executes a cascading enrichment strategy:
+        1. Load from consolidated documents.json if available
+        2. Consolidate raw JSON files if present and necessary
+        3. Execute full crawler pipeline if necessary
+
+        Guarantees that after successful completion, the database contains
+        at least MIN_DB_DOCUMENTS indexed documents.
+
+        Args:
+            use_crawlers: Whether to use crawlers for indexing
+            db_health: Optional pre-fetched database health status to inform strategy
+
+        Returns:
+            Dict with reindexing status: {
+                'success': bool,
+                'indexed_documents': int,
+                'duration_seconds': float,
+                'crawled': bool,
+                'message': str,
+                'timestamp': str
+            }
+        """
+        self._log_step("reindex_database", "Starting database reindex")
+        start_time = time.time()
+
+        try:
+            if db_health is None:
+                db_health = self.check_database_health()
+            doc_count = int(db_health.get('document_count', 0))
+            file_count = int(db_health.get('file_document_count', 0))
+            raw_count = 0
+            try:
+                raw_count = int(self.crawler_caller.count_raw_documents())
+            except Exception:
+                raw_count = 0
+
+            self._log_step(
+                "reindex_database",
+                f"DB state -> indexed:{doc_count}, consolidated:{file_count}, raw:{raw_count}"
+            )
+
+            doc_count = 0
+            crawled = False
+
+            # Attempt 1: Load from consolidated documents.json
+            if file_count >= MIN_DB_DOCUMENTS:
+                self._log_step("reindex_database", f"Loading {file_count} documents from documents.json")
+                try:
+                    docs = self.crawler_caller.load_consolidated_documents()
+                    if docs:
+                        self.pipeline.index(docs)
+                        doc_count = len(docs)
+                        self._log_step("reindex_database", f"Indexed {doc_count} documents from consolidated file")
+                except Exception as e:
+                    logger.warning(f"Failed to index consolidated documents: {e}")
+
+            # Attempt 2: Consolidate and index raw documents
+            if doc_count < MIN_DB_DOCUMENTS and raw_count >= MIN_DB_DOCUMENTS:
+                self._log_step("reindex_database", f"Consolidating {raw_count} raw documents")
+                try:
+                    docs = self.crawler_caller.consolidate_raw_to_documents()
+                    if docs:
+                        self.crawler_caller.save_consolidated_documents(docs)
+                        self.pipeline.index(docs)
+                        doc_count = len(docs)
+                        self._log_step("reindex_database", f"Consolidated and indexed {doc_count} raw documents")
+                except Exception as e:
+                    logger.warning(f"Failed to consolidate/index raw documents: {e}")
+
+            # Attempt 3: Execute full crawler pipeline
+            if doc_count < MIN_DB_DOCUMENTS and use_crawlers:
+                self._log_step("reindex_database", "Below minimum threshold; executing crawlers")
+                try:
+                    load_result = self.load_documents_from_crawlers(force_recrawl=True)
+                    if load_result.get('success'):
+                        doc_count = load_result.get('indexed_documents', 0)
+                        self._log_step(
+                            "reindex_database",
+                            f"Crawlers loaded and indexed {doc_count} documents"
+                        )
+                        crawled = True
+                    else:
+                        self._log_step("reindex_database", f"Crawler pipeline failed: {load_result.get('message')}")
+                except Exception as e:
+                    logger.warning(f"Crawler execution failed: {e}")
+
+            # Final health check
+            success = doc_count >= MIN_DB_DOCUMENTS
+            duration = time.time() - start_time
+
+            message = (
+                f"Database reindex completed with {doc_count} indexed documents"
+                if success
+                else f"Reindex incomplete: {doc_count} documents (required: {MIN_DB_DOCUMENTS})"
+            )
+
+            self._log_step("reindex_database", message)
+
+            return {
+                'success': success,
+                'indexed_documents': doc_count,
+                'duration_seconds': round(duration, 2),
+                'crawled': crawled,
+                'message': message,
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+
+        except Exception as e:
+            error_msg = f"Database reindex failed: {str(e)}"
+            logger.error(error_msg, exc_info=True)
+            return {
+                'success': False,
+                'indexed_documents': 0,
+                'duration_seconds': round(time.time() - start_time, 2),
+                'crawled': False,
+                'message': error_msg,
+                'timestamp': datetime.now(timezone.utc).isoformat()
             }
 
     # ==================== INSUFFICIENCY DETECTION ====================
@@ -429,7 +562,7 @@ class MainOrchestator:
 
         # Step 1: Check database health and ensure minimum documents before searching.
         db_health = self.check_database_health()
-        vec_count = int(db_health.get('document_count', 0))
+        doc_count = int(db_health.get('document_count', 0))
         file_count = int(db_health.get('file_document_count', 0))
         raw_count = 0
         try:
@@ -439,63 +572,27 @@ class MainOrchestator:
 
         self._log_step(
             "retrieve_documents",
-            f"DB counts -> indexed:{vec_count}, consolidated_file:{file_count}, raw:{raw_count}"
+            f"DB counts -> indexed:{doc_count}, consolidated_file:{file_count}, raw:{raw_count}"
         )
 
         # Only allow search when there are at least MIN_DB_DOCUMENTS indexed documents.
-        allowed_to_search = vec_count >= MIN_DB_DOCUMENTS
+        allowed_to_search = doc_count >= MIN_DB_DOCUMENTS
 
-        # If not enough indexed docs, attempt enrichment
+        # If not enough indexed docs, attempt reindexing strategies.
         if not allowed_to_search:
-            # Try loading from consolidated file
-            if file_count >= MIN_DB_DOCUMENTS:
-                self._log_step("retrieve_documents", f"Consolidated file count: {file_count} -- loading into index")
-                try:
-                    docs = self.crawler_caller.load_consolidated_documents()
-                    if docs:
-                        self.pipeline.index(docs)
-                        allowed_to_search = True
-                        metadata['auto_crawled'] = True
-                        self._log_step("retrieve_documents", f"Loaded and indexed {len(docs)} documents from documents.json")
-                except Exception as e:
-                    logger.warning(f"Failed to index consolidated documents: {e}")
-
-            # Try consolidating raw files if present
-            if not allowed_to_search and raw_count >= MIN_DB_DOCUMENTS:
-                self._log_step("retrieve_documents", f"Raw documents count: {raw_count} -- consolidating and indexing")
-                try:
-                    docs = self.crawler_caller.consolidate_raw_to_documents()
-                    if docs:
-                        self.crawler_caller.save_consolidated_documents(docs) # Save for future sessions
-                        self.pipeline.index(docs)
-                        allowed_to_search = True
-                        metadata['auto_crawled'] = True
-                        self._log_step("retrieve_documents", f"Consolidated and indexed {len(docs)} raw documents")
-                except Exception as e:
-                    logger.warning(f"Failed to consolidate/index raw documents: {e}")
-
-            # As a last resort, trigger crawlers if allowed
-            if not allowed_to_search and auto_reload_empty:
-                self._log_step("retrieve_documents", "Below quota — triggering crawlers to obtain more documents")
-                try:
-                    load_result = self.load_documents_from_crawlers(force_recrawl=True)
-                    if load_result.get('success') and load_result.get('indexed_documents', 0) >= MIN_DB_DOCUMENTS:
-                        allowed_to_search = True
-                        metadata['auto_crawled'] = True
-                        self._log_step("retrieve_documents", f"Crawlers loaded {load_result.get('indexed_documents')} documents")
-                    else:
-                        self._log_step("retrieve_documents", f"Crawler attempt did not reach quota: {load_result.get('message')}")
-                except Exception as e:
-                    logger.warning(f"Crawlers failed during enrichment attempt: {e}")
+            reindex_result = self.reindex_database(auto_reload_empty, db_health)
+            allowed_to_search = reindex_result.get('success', False)
+            metadata['auto_crawled'] = reindex_result.get('crawled', False)
+            metadata['reindexing_details'] = reindex_result.get('message', '')
 
         db_health = self.check_database_health()
 
         # If still not allowed, return error if database is empty or proceed with warning if below quota but not empty
         if not allowed_to_search:
-            vec_count = int(db_health.get('document_count', 0))
-            self._log_step("retrieve_documents", f"Insufficient documents ({vec_count}) after enrichment attempts")
+            doc_count = int(db_health.get('document_count', 0))
+            self._log_step("retrieve_documents", f"Insufficient documents ({doc_count}) after reindexing attempts")
 
-            if vec_count < 1:
+            if doc_count < 1:
                 metadata['retrieved_documents'] = []
                 return {
                     'documents': [],
@@ -524,15 +621,15 @@ class MainOrchestator:
             metadata['web_documents'] = len(web_results)
             self._log_step("retrieve_documents", f"Web search returned {len(web_results)} results")
 
-        # Persist web results to documents.json for future sessions
         if web_results:
+            # Persist web results to documents.json for future sessions
             web_docs = [
                 {
                     "id": r.get('id', ''),
                     "title": clean_scraped_text(str(r.get("title", ""))),
                     "content": clean_scraped_text(str(r.get("content", ""))),
                     "url": r.get("url"),
-                    "source": "web_augment",
+                    "source": "web",
                     "date": datetime.now(timezone.utc).isoformat(),
                 }
                 for i, r in enumerate(web_results)
@@ -545,6 +642,19 @@ class MainOrchestator:
                 )
             except Exception as e:
                 logger.warning(f"Failed to persist web results: {e}")
+            
+            # Persist web results for current session use without full reindex.
+            fails = 0
+            for doc in web_docs:
+                try:
+                    self.pipeline.add_document(doc)
+                except Exception as e:
+                    fails += 1
+                    logger.warning(f"Failed to add web document {doc.get('id', 'unknown')} to active indices: {e}")
+
+            logger.info(
+                f"Added {len(web_docs) - fails} web documents to active indices; {fails} failures"
+            )
 
         # Step 5: Consolidate documents
         all_documents = self._consolidate_documents(local_results, web_results)
@@ -746,18 +856,18 @@ class MainOrchestator:
             Consolidated document list, prioritizing local over web results
         """
         consolidated = []
-        seen_content = set()
+        seen_content = set() # for deduplication based on content hash
 
-        # Add local results first (they're more reliable)
-        for result in local_results:
+        # Add web results (priority as assumed to be fresher content)
+        for result in web_results:
             content = self._extract_content(result)
             content_hash = hash(content[:100])
             if content_hash not in seen_content:
                 consolidated.append(result)
                 seen_content.add(content_hash)
 
-        # Add web results (avoid duplicates)
-        for result in web_results:
+        # Add local results (assumed sorted by score)
+        for result in local_results:
             content = self._extract_content(result)
             content_hash = hash(content[:100])
             if content_hash not in seen_content:

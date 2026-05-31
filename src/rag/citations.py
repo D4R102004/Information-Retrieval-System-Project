@@ -31,6 +31,9 @@ class CitationExtractor:
     CITATION_PATTERN = r"\[([^\]]+)\]"
     """Regex pattern for [doc_id] citation format."""
 
+    CODE_BLOCK_PATTERN = r"```[\s\S]*?```"
+    """Regex pattern to identify fenced code blocks for exclusion."""
+
     @staticmethod
     def _normalize_citation_ids(
         answer: str, citation_ids: List[str], documents: Optional[List[Dict]] = None
@@ -119,7 +122,7 @@ class CitationExtractor:
         """
         # Remove fenced code blocks (triple backticks) to ignore bracketed expressions inside code samples.
         try:
-            text_no_code = re.sub(r"```[\s\S]*?```", "", text)
+            text_no_code = re.sub(CitationExtractor.CODE_BLOCK_PATTERN, "", text)
         except Exception:
             text_no_code = text
 
