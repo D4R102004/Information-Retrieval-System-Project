@@ -10,7 +10,13 @@ from datetime import datetime, timezone
 # Third-party
 import httpx
 from bs4 import BeautifulSoup
-from ddgs import DDGS
+
+try:
+    from ddgs import DDGS
+except ModuleNotFoundError as exc:
+    if exc.name != "ddgs":
+        raise
+    from duckduckgo_search import DDGS
 
 
 class WebSearcher:
