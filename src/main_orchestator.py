@@ -581,7 +581,8 @@ class MainOrchestator:
         # If not enough indexed docs, attempt reindexing strategies.
         if not allowed_to_search:
             reindex_result = self.reindex_database(auto_reload_empty, db_health)
-            allowed_to_search = reindex_result.get('success', False)
+            allowed_to_search = (reindex_result.get('success', False) and
+                                reindex_result.get('indexed_documents', 0) >= MIN_DB_DOCUMENTS) # safety double-check
             metadata['auto_crawled'] = reindex_result.get('crawled', False)
             metadata['reindexing_details'] = reindex_result.get('message', '')
 

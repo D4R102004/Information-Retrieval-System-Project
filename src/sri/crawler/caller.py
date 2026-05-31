@@ -166,6 +166,10 @@ class CrawlerCaller:
 
                     logger.info(f"  {spider_name}: {count} articles saved")
 
+                    # Save last crawled time
+                    with open(f"{self.raw_dir}/{spider_name.lower()}/_metadata.txt", "a", encoding = "utf-8") as metadata:
+                        metadata.write(f"{datetime.now().isoformat()} {count}")
+
                 except Exception as e:
                     error_msg = f"{spider_name} failed: {str(e)}"
                     logger.error(error_msg, exc_info=True)
@@ -381,15 +385,38 @@ class CrawlerCaller:
         )
         return self.documents_output
 
-    def count_raw_documents(self) -> int:
+    def count_raw_documents(self, folder: str = "*") -> int:
         """
         Count unconsolidated documents in data/raw/.
+
+        Args:
+            folder: target folder name ("*" for every folder in raw_dir)
 
         Returns:
             Number of JSON files in raw directories
         """
-        count = sum(1 for _ in self.raw_dir.glob("*/*.json"))
+        count = sum(1 for _ in self.raw_dir.glob(f"{folder}/*.json"))
         return count
+    
+    def get_last_crawled(self, source: str) -> str:
+        """
+        Gets the date of the last crawl event for a given source.
+
+        Args:
+            source (str): target source name
+
+        Returns:
+            str: date of last crawl event in ISO format.
+        """
+        
+        path = f"{self.raw_dir}/{source}/_metadata.txt"
+        try:
+            with open(path, "r", encoding="utf-8") as metadata:
+                last_entry = metadata.readlines()[-1].strip()
+            return last_entry.split(" ")[0]
+        except (IOError, IndexError):
+            logger.warning(f"Failed to read last crawl date for source: {source}")
+            return ""
 
     def count_consolidated_documents(self) -> int:
         """
