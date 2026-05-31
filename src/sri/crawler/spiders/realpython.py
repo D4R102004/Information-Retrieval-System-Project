@@ -36,7 +36,7 @@ class RealPythonSpider(BaseSpider):
             max_articles: Maximum number of articles to fetch.
         """
         super().__init__(max_articles)
-        self._client = httpx.Client(timeout=CrawlerSettings.HTTP_TIMEOUT)
+        self._client = httpx.Client(timeout=CrawlerSettings.HTTP_SCRAPE_TIMEOUT)
 
         self._base_url = CrawlerSettings.REALPYTHON_BASE_URL
         self._sitemap_url = CrawlerSettings.REALPYTHON_SITEMAP_URL
@@ -50,7 +50,7 @@ class RealPythonSpider(BaseSpider):
         urls = [
             loc.text
             for loc in soup.find_all("loc")
-            if loc.text and "/tutorials/" in loc.text
+            if loc.text and loc.text.count("/") == 4 and "/tutorials/" not in loc.text
         ]
 
         collected: list[ArticleItem] = []
