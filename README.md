@@ -1011,12 +1011,12 @@ make clean
 ## Team and Acknowledgments
 
 **Project Members:**
-- **Darío Francisco Alfonso** (@D4R102004) — System Architecture, Core Pipeline, RAG Integration
-- **Juan Carlos Carmenate** (@Juank404) — Backend Implementation, Crawlers, CLI
-- **Sebastian González Alfonso** (@sebagonz106) — LSI Model, Vector Store, Evaluation
+- **Darío Francisco Alfonso** (@D4R102004)
+- **Juan Carlos Carmenate** (@Juank404)
+- **Sebastian González Alfonso** (@sebagonz106)
 
 **Advisors:**
-- Universidad de La Habana, Faculty of Mathematics and Computer Science
+- University of Havana, Faculty of Mathematics and Computer Science
 
 **Contributions:**
 We acknowledge the open-source community for the excellent libraries that power this system: scikit-learn, Ollama, ChromaDB, Scrapy, and many others.
@@ -1080,6 +1080,6 @@ python src/main.py --interactive
 ---
 
 **For detailed architecture documentation, see:**
+
+- `docs/INDEX.md` — Documentation structure guide
 - `docs/ARCHITECTURE_ANALYSIS.md` — Technical deep-dive
-- `docs/FRONTEND_IMPLEMENTATION_PLAN.md` — Gradio UI specification
-- `docs/RAG_IMPLEMENTATION_PLAN.md` — RAG pipeline details

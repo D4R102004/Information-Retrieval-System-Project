@@ -25,14 +25,7 @@ This project includes comprehensive documentation organized by audience and purp
 |----------|---------|----------|-------|
 | **[Backend Architecture](BACKEND_ARCHITECTURE.md)** | Technical deep-dive into core components | Backend Developers, Architects | Complete system |
 | **[Architecture Analysis](ARCHITECTURE_ANALYSIS.md)** | High-level system design analysis | Technical Leads, Researchers | System design |
-
----
-
-## 🎨 Frontend & Interface
-
-| Document | Purpose | Audience | Scope |
-|----------|---------|----------|-------|
-| **[Frontend Implementation Plan](FRONTEND_IMPLEMENTATION_PLAN.md)** | Gradio UI specification and design | Frontend Developers, UX/UI | Complete Gradio interface |
+| **[Pre-RAG Status](PRE_RAG_STATUS.md)** | Status before RAG integration | Project Lead | Reference |
 
 ---
 
@@ -41,7 +34,7 @@ This project includes comprehensive documentation organized by audience and purp
 | Document | Purpose | Audience | Status |
 |----------|---------|----------|--------|
 | **[RAG Implementation Plan](RAG_IMPLEMENTATION_PLAN.md)** | RAG pipeline architecture and implementation | Backend Developers | In Progress |
-| **[Pre-RAG Status](PRE_RAG_STATUS.md)** | Status before RAG integration | Project Lead | Reference |
+| **[Frontend Implementation Plan](FRONTEND_IMPLEMENTATION_PLAN.md)** | Gradio UI specification and design | Frontend Developers, UX/UI | Complete Gradio interface |
 
 ---
 
