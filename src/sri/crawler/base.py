@@ -51,6 +51,11 @@ class BaseSpider(ABC):
             parser = RobotFileParser()
             parser.set_url(f"https://{url.split('/')[2]}/robots.txt")
             parser.read()
+            # Bug in Python's RobotFileParser: if read() fails silently,
+            # last_checked stays 0 and can_fetch returns False by default.
+            # If no rules were parsed, allow by default.
+            if not parser.last_checked:
+                return True
             return parser.can_fetch("*", url)
         except Exception:
             # If robots.txt cannot be fetched, allow by default

@@ -10,6 +10,7 @@ class CrawlerSettings:
 
     # HTTP
     HTTP_TIMEOUT: float = 10.0
+    HTTP_SCRAPE_TIMEOUT: float = 30.0  # For heavy HTML pages
 
     # Fetch limits
     MAX_ARTICLES: int = 500
