@@ -104,7 +104,7 @@ class CrawlerCaller:
         self,
         raw_dir: str = "data/raw",
         documents_output: str = "data/documents.json",
-        initial_corpus_dir: str = "dara/initial-corpus"
+        initial_corpus_dir: str = "data/initial-corpus"
     ):
         """
         Initialize crawler coordinator.

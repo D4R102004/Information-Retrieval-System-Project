@@ -22,7 +22,6 @@ class OrchestratorService:
 
     def __init__(self) -> None:
         self._orchestrator = None
-        self.use_initial_corpus = True  # Default to including initial corpus documents in retrieval and reindexing
 
     def _get_orchestrator(self):
         """Instantiate the orchestrator only when the UI needs it."""
@@ -33,7 +32,7 @@ class OrchestratorService:
         return self._orchestrator
 
     def retrieve_documents(self, question: str, **kwargs: Any) -> dict[str, Any]:
-        return self._get_orchestrator().retrieve_documents(question, use_initial_corpus=self.use_initial_corpus, **kwargs)
+        return self._get_orchestrator().retrieve_documents(question, **kwargs)
 
     def stream_retrieve_documents(self, question: str, **kwargs: Any) -> Iterator[dict[str, Any]]:
         """Stream retrieval progress events and the final retrieval payload."""
@@ -79,7 +78,6 @@ class OrchestratorService:
         def _run_retrieval() -> None:
             try:
                 result_holder["value"] = self._get_orchestrator().retrieve_documents(question, 
-                                                                                     use_initial_corpus=self.use_initial_corpus, 
                                                                                      **kwargs
                                                                                      )
             except Exception as exc:
@@ -129,7 +127,7 @@ class OrchestratorService:
         return self._get_orchestrator().check_database_health()
 
     def load_documents_from_crawlers(self, **kwargs: Any) -> dict[str, Any]:
-        return self._get_orchestrator().load_documents_from_crawlers(use_initial_corpus=self.use_initial_corpus, **kwargs)
+        return self._get_orchestrator().load_documents_from_crawlers(**kwargs)
 
     def evaluate_test(self, test_spec: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._get_orchestrator().evaluate_test(test_spec)
