@@ -122,7 +122,7 @@ def load_data_command(orchestrator: MainOrchestator, logger: logging.Logger, max
     print("=" * 70)
     
     logger.info(f"Starting crawler execution (max_articles={max_articles})")
-    result = orchestrator.load_documents_from_crawlers(max_articles=max_articles)
+    result = orchestrator.load_documents_from_crawlers(max_articles_per_spider=max_articles)
     
     if result['success']:
         print(f"[OK] Success: {result['message']}")
@@ -240,7 +240,7 @@ def execute_single_query(
     orchestrator: MainOrchestator,
     query: str,
     max_local: int = 5,
-    use_web_search: bool = True,
+    enable_web_search: bool = True,
     logger: Optional[logging.Logger] = None,
 ) -> None:
     """
@@ -250,7 +250,7 @@ def execute_single_query(
         orchestrator: MainOrchestator instance
         query: User question
         max_local: Maximum local search results
-        use_web_search: Enable web search fallback
+        enable_web_search: Enable web search fallback
         logger: Logger instance
     """
     if not logger:
@@ -265,8 +265,8 @@ def execute_single_query(
         response = orchestrator.query(
             question=query,
             max_local_results=max_local,
-            use_web_search=use_web_search,
-            auto_reload_empty=True,
+            enable_web_search=enable_web_search,
+            auto_reload=True,
         )
         
         format_response(response)
@@ -489,7 +489,7 @@ def main() -> int:
                 orchestrator,
                 args.query,
                 max_local=args.max_local,
-                use_web_search=not args.no_web_search,
+                enable_web_search=not args.no_web_search,
                 logger=logger,
             )
             return 0

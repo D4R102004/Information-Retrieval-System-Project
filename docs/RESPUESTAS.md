@@ -354,12 +354,10 @@ El corpus es representativo porque cubre el dominio desde **dos perspectivas com
 **Mecanismo de verificación:**
 ```python
 # De src/main_orchestator.py
-MIN_DB_DOCUMENTS = 500
-
 def load_documents_from_crawlers(self):
     documents = self.crawler_caller.load_consolidated_documents()
-    if len(documents) < MIN_DB_DOCUMENTS:
-        logger.info(f"Corpus bajo ({len(documents)} < {MIN_DB_DOCUMENTS}), ejecutando crawlers...")
+    if len(documents) < self.settings["min_documents"]:
+        logger.info(f"Corpus bajo ({len(documents)} < {self.settings["min_documents"]}), ejecutando crawlers...")
         # Auto-trigger de crawling si insuficiente
 ```
 
@@ -667,7 +665,7 @@ class SufficiencyChecker:
 **Ubicación:** `src/main_orchestator.py`
 
 ```python
-def query(self, query_text: str, use_web_search: bool = True) -> RAGResponse:
+def query(self, query_text: str, enable_web_search: bool = True) -> RAGResponse:
     # 1. Búsqueda local (LSI + vector)
     local_results = self.pipeline.search(query_text, top_k=10)
     
@@ -675,7 +673,7 @@ def query(self, query_text: str, use_web_search: bool = True) -> RAGResponse:
     is_sufficient = self.sufficiency_checker.is_sufficient(local_results)
     
     # 3. Web search conditional
-    if not is_sufficient and use_web_search:
+    if not is_sufficient and enable_web_search:
         logger.info(f"Local results insufficient. Triggering web search...")
         web_results = self.web_searcher.search(query_text)
         

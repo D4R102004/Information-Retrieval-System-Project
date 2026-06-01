@@ -135,7 +135,7 @@ class LSIModel:
                 "doc_id": doc.get("id", str(idx)),
                 "title":  doc.get("title", "Sin título"),
                 "score":  round(sim, 4),
-                "content": self._snippet(doc.get("content", ""), rag_config.max_doc_content_length),
+                "content": self._snippet(doc.get("content", ""), rag_config.max_context_doc_length),
                 "url":    doc.get("url", ""),
                 "tags":   doc.get("tags", []),
             })

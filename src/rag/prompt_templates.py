@@ -57,7 +57,7 @@ JSON Response:"""
         pass
 
     def _format_context(
-        self, documents: List[Dict], max_chars: int = rag_config.max_doc_content_length * rag_config.max_cites
+        self, documents: List[Dict], max_chars: int = rag_config.max_context_doc_length * rag_config.max_cites
     ) -> str:
         """Format documents into context string.
 
@@ -77,7 +77,7 @@ JSON Response:"""
             if doc_id == "unknown":                     # Legacy name in case of normalization
                 doc_id = doc.get("doc_id", "unknown")   # failure when receiving documents
             title = _strip_emojis(str(doc.get("title", "Untitled")))
-            content = _strip_emojis(str(doc.get("content", "")))[:rag_config.max_doc_content_length]
+            content = _strip_emojis(str(doc.get("content", "")))[:rag_config.max_context_doc_length]
 
             doc_text = f"ID: [{doc_id}]\nTITLE: {title}\nCONTENT:\n{content}\n"
 

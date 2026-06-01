@@ -22,6 +22,7 @@ from typing import List, Dict, Optional, Any
 from sri.pipeline import SRIPipeline
 from sri.crawler.caller import CrawlerCaller, clean_scraped_text
 from sri.crawler.settings import CrawlerSettings
+from main_config import MainConfig
 from rag.rag_module import RAGModule
 from rag.llm_provider import OllamaProvider # Change to desired LLM provider
 from rag.output_parser import RAGResponse
@@ -30,7 +31,6 @@ from sri.web_search.checker import SufficiencyChecker
 from sri.web_search.searcher import WebSearcher
 
 logger = logging.getLogger(__name__)
-MIN_DB_DOCUMENTS = 500  # Minimum documents for local search to be considered sufficient
 
 class MainOrchestator:
     """
@@ -56,7 +56,7 @@ class MainOrchestator:
         self.sufficiency_checker = SufficiencyChecker()
         self.web_searcher = WebSearcher()
         self.crawler_caller = CrawlerCaller()
-        self.settings = CrawlerSettings()
+        self.settings = MainConfig()
         
         # Paths
         self.data_dir = Path(__file__).resolve().parent.parent / "data"
@@ -70,7 +70,7 @@ class MainOrchestator:
 
     # ==================== DATABASE MANAGEMENT ====================
 
-    def clear_all_indices(self, clear_raw: bool = True) -> Dict[str, Any]:
+    def clear_all_indices(self, clear_raw: Optional[bool] = None) -> Dict[str, Any]:
         """
         Clear all indices, models, and database state.
 
@@ -87,6 +87,10 @@ class MainOrchestator:
             Dict with operation status: {'success': bool, 'message': str, 'timestamp': str}
         """
         self._log_step("clear_all_indices", "Starting complete database cleanup")
+
+        if clear_raw is None:
+            clear_raw = self._get_setting("clear_raw")
+        
         try:
             if clear_raw:
                 cache_result = self.crawler_caller.clear_cached_documents()
@@ -100,7 +104,7 @@ class MainOrchestator:
             
             return {
                 'success': True,
-                'message': 'All indices, models, raw data, and documents.json cleared successfully',
+                'message': f"All indices, models{", raw data," if clear_raw else ""} and documents.json cleared successfully",
                 'timestamp': datetime.now(timezone.utc).isoformat()
             }
         except Exception as e:
@@ -118,9 +122,9 @@ class MainOrchestator:
 
     def load_documents_from_crawlers(
         self,
-        max_articles: int = 1000,
-        force_recrawl: bool = False,
-        use_initial_corpus: bool = True
+        max_articles_per_spider: Optional[int] = None,
+        force_recrawl: Optional[bool] = None,
+        use_initial_corpus: Optional[bool] = None
     ) -> Dict[str, Any]:
         """
         Execute full crawl→consolidate→index pipeline.
@@ -145,6 +149,15 @@ class MainOrchestator:
         self._log_step("load_documents", "Starting crawler execution and indexing")
         start_time = time.time()
 
+        if max_articles_per_spider is None:
+            max_articles_per_spider = self._get_setting("max_articles_per_spider")
+
+        if force_recrawl is None:
+            force_recrawl = self._get_setting("force_recrawl")
+
+        if use_initial_corpus is None:
+            use_initial_corpus = self._get_setting("use_initial_corpus")
+
         try:
             documents = []
 
@@ -160,7 +173,7 @@ class MainOrchestator:
                 # Execute crawlers only when we have no consolidated file
                 crawl_result = self.crawler_caller.execute_full_pipeline(
                     force_recrawl=force_recrawl,
-                    max_articles=max_articles,
+                    max_articles=max_articles_per_spider,
                     use_initial_corpus=use_initial_corpus
                 )
 
@@ -274,7 +287,7 @@ class MainOrchestator:
                 logger.debug(f"Failed to check ChromaDB: {str(e)}")
 
             is_empty = effective_count == 0 and file_count == 0
-            can_search = effective_count >= MIN_DB_DOCUMENTS
+            can_search = effective_count >= self.settings["min_documents"]
             status = 'healthy' if can_search else ('empty' if is_empty else 'degraded')
 
             return {
@@ -299,7 +312,11 @@ class MainOrchestator:
                 'status': 'error'
             }
 
-    def reindex_database(self, use_crawlers: bool = True, db_health: Optional[Dict[str, Any]] = None, use_initial_corpus: bool = True) -> Dict[str, Any]:
+    def reindex_database(self, 
+                         auto_reload: Optional[bool] = None, 
+                         db_health: Optional[Dict[str, Any]] = None, 
+                         use_initial_corpus: Optional[bool] = None
+                         ) -> Dict[str, Any]:
         """
         Rebuild database indices to ensure minimum document threshold.
 
@@ -309,7 +326,7 @@ class MainOrchestator:
         3. Execute full crawler pipeline if necessary
 
         Guarantees that after successful completion, the database contains
-        at least MIN_DB_DOCUMENTS indexed documents.
+        at least self.settings["min_documents"] indexed documents.
 
         Args:
             use_crawlers: Whether to use crawlers for indexing
@@ -329,6 +346,12 @@ class MainOrchestator:
         self._log_step("reindex_database", "Starting database reindex")
         start_time = time.time()
 
+        if use_initial_corpus is None:
+            use_initial_corpus = self._get_setting("use_initial_corpus")
+        
+        if auto_reload is None:
+            auto_reload = self._get_setting("auto_reload")
+
         try:
             if db_health is None:
                 db_health = self.check_database_health()
@@ -347,7 +370,7 @@ class MainOrchestator:
             crawled = False
 
             # Attempt 1: Load from consolidated documents.json
-            if file_count >= MIN_DB_DOCUMENTS:
+            if file_count >= self.settings["min_documents"]:
                 self._log_step("reindex_database", f"Loading {file_count} documents from documents.json")
                 try:
                     docs = self.crawler_caller.load_consolidated_documents()
@@ -359,7 +382,7 @@ class MainOrchestator:
                     logger.warning(f"Failed to index consolidated documents: {e}")
 
             # Attempt 2: Consolidate and index raw documents
-            if doc_count < MIN_DB_DOCUMENTS and raw_count + initial_corpus_count >= MIN_DB_DOCUMENTS:
+            if doc_count < self.settings["min_documents"] and raw_count + initial_corpus_count >= self.settings["min_documents"]:
                 self._log_step("reindex_database", f"Consolidating {raw_count} raw documents")
                 try:
                     docs = self.crawler_caller.consolidate_raw_to_documents(use_initial_corpus=use_initial_corpus)
@@ -372,7 +395,7 @@ class MainOrchestator:
                     logger.warning(f"Failed to consolidate/index raw documents: {e}")
 
             # Attempt 3: Execute full crawler pipeline
-            if doc_count < MIN_DB_DOCUMENTS and use_crawlers:
+            if doc_count < self.settings["min_documents"] and auto_reload:
                 self._log_step("reindex_database", "Below minimum threshold; executing crawlers")
                 try:
                     load_result = self.load_documents_from_crawlers(force_recrawl=True, use_initial_corpus=use_initial_corpus)
@@ -389,13 +412,13 @@ class MainOrchestator:
                     logger.warning(f"Crawler execution failed: {e}")
 
             # Final health check
-            success = doc_count >= MIN_DB_DOCUMENTS
+            success = doc_count >= self.settings["min_documents"]
             duration = time.time() - start_time
 
             message = (
                 f"Database reindex completed with {doc_count} indexed documents"
                 if success
-                else f"Reindex incomplete: {doc_count} documents (required: {MIN_DB_DOCUMENTS})"
+                else f"Reindex incomplete: {doc_count} documents (required: {self.settings["min_documents"]})"
             )
 
             self._log_step("reindex_database", message)
@@ -450,7 +473,7 @@ class MainOrchestator:
 
         return overlap_count > 0  # At least one doc has some overlap
 
-    def detect_insufficiency_for_query(
+    def _detect_insufficiency_for_query(
         self,
         query: str,
         results: List[Dict]
@@ -486,9 +509,9 @@ class MainOrchestator:
         }
 
         # Criterion 1: Quantity
-        if len(results) < self.settings.MIN_RESULTS_FOR_QUERY:
+        if len(results) < self.settings["MIN_RESULTS_FOR_QUERY"]:
             reasons.append(
-                f"Too few results ({len(results)} < {self.settings.MIN_RESULTS_FOR_QUERY})"
+                f"Too few results ({len(results)} < {self.settings["MIN_RESULTS_FOR_QUERY"]})"
             )
 
         # Criterion 2: Quality
@@ -500,9 +523,9 @@ class MainOrchestator:
             if scores:
                 avg_score = sum(scores) / len(scores)
                 metrics['avg_score'] = avg_score
-                if avg_score < self.settings.MIN_AVG_SCORE_THRESHOLD:
+                if avg_score < self.settings["MIN_AVG_SCORE_THRESHOLD"]:
                     reasons.append(
-                        f"Low average score ({avg_score:.2f} < {self.settings.MIN_AVG_SCORE_THRESHOLD})"
+                        f"Low average score ({avg_score:.2f} < {self.settings["MIN_AVG_SCORE_THRESHOLD"]})"
                     )
 
         # Criterion 3: Semantic overlap
@@ -522,10 +545,11 @@ class MainOrchestator:
     def retrieve_documents(
         self,
         question: str,
-        max_local_results: int = 5,
-        use_web_search: bool = True,
-        auto_reload_empty: bool = True,
-        use_initial_corpus: bool = True
+        max_local_results: Optional[int] = None,
+        max_web_results: Optional[int] = None,
+        enable_web_search: Optional[bool] = None,
+        auto_reload: Optional[bool] = None,
+        use_initial_corpus: Optional[bool] = None
     ) -> Dict[str, Any]:
         """
         Retrieve relevant documents for a question.
@@ -536,8 +560,8 @@ class MainOrchestator:
         Args:
             question: User query
             max_local_results: Maximum local search results to use
-            use_web_search: Enable web search augmentation
-            auto_reload_empty: Auto-execute crawlers if DB is below minimum threshold
+            enable_web_search: Enable web search augmentation
+            auto_reload: Auto-execute crawlers if DB is below minimum threshold
             use_initial_corpus: If True, include initial corpus documents in reindexing if necessary
 
         Returns:
@@ -568,6 +592,21 @@ class MainOrchestator:
 
         self._log_step("retrieve_documents", f"Retrieving documents for: {question}")
 
+        if max_local_results is None:
+            max_local_results = self._get_setting("max_local_results")
+
+        if max_web_results is None:
+            max_web_results = self._get_setting("max_web_results")
+
+        if enable_web_search is None:
+            enable_web_search = self._get_setting("enable_web_search")
+
+        if auto_reload is None:
+            auto_reload = self._get_setting("auto_reload")
+
+        if use_initial_corpus is None:
+            use_initial_corpus = self._get_setting("use_initial_corpus")
+
         # Step 1: Check database health and ensure minimum documents before searching.
         db_health = self.check_database_health()
         doc_count = int(db_health.get('document_count', 0))
@@ -580,14 +619,14 @@ class MainOrchestator:
             f"DB counts -> indexed:{doc_count}, consolidated_file:{file_count}, raw:{raw_count}, initial_corpus:{initial_corpus_count}"
         )
 
-        # Only allow search when there are at least MIN_DB_DOCUMENTS indexed documents.
-        allowed_to_search = doc_count >= MIN_DB_DOCUMENTS
+        # Only allow search when there are at least self.settings["min_documents"] indexed documents.
+        allowed_to_search = doc_count >= self.settings["min_documents"]
 
         # If not enough indexed docs, attempt reindexing strategies.
         if not allowed_to_search:
-            reindex_result = self.reindex_database(auto_reload_empty, db_health, use_initial_corpus)
+            reindex_result = self.reindex_database(auto_reload, db_health, use_initial_corpus)
             allowed_to_search = (reindex_result.get('success', False) and
-                                reindex_result.get('indexed_documents', 0) >= MIN_DB_DOCUMENTS) # safety double-check
+                                reindex_result.get('indexed_documents', 0) >= self.settings["min_documents"]) # safety double-check
             metadata['auto_crawled'] = reindex_result.get('crawled', False)
             metadata['reindexing_details'] = reindex_result.get('message', '')
 
@@ -614,16 +653,17 @@ class MainOrchestator:
         self._log_step("retrieve_documents", f"Local search returned {len(local_results)} results")
 
         # Step 3: Insufficiency detection
-        insufficiency = self.detect_insufficiency_for_query(question, local_results)
-        metadata['insufficiency_detected'] = insufficiency['is_insufficient']
+        insufficiency = self._detect_insufficiency_for_query(question, local_results)
+        insufficient = insufficiency['is_insufficient']
+        metadata['insufficiency_detected'] = insufficient
         metadata['insufficiency_reasons'] = insufficiency['reasons']
         metadata['local_documents'] = len(local_results)
 
         # Step 4: Web search if needed
         web_results = []
-        if use_web_search and insufficiency['is_insufficient']:
+        if enable_web_search and insufficient:
             self._log_step("retrieve_documents", "Insufficiency detected, performing web search")
-            web_results = self._search_web(question)
+            web_results = self._search_web(question, max_web_results)
             metadata['web_documents'] = len(web_results)
             self._log_step("retrieve_documents", f"Web search returned {len(web_results)} results")
 
@@ -705,9 +745,11 @@ class MainOrchestator:
     def query(
         self,
         question: str,
-        max_local_results: int = 5,
-        use_web_search: bool = True,
-        auto_reload_empty: bool = True
+        max_local_results: Optional[int] = None,
+        max_web_results: Optional[int] = None,
+        enable_web_search: Optional[bool] = None,
+        auto_reload: Optional[bool] = None,
+        use_initial_corpus: Optional[bool] = None
     ) -> RAGResponse:
         """
         Complete query execution pipeline.
@@ -716,13 +758,13 @@ class MainOrchestator:
         document consolidation → RAG generation → citation extraction.
 
         Automatically loads data from crawlers if database is empty and
-        auto_reload_empty=True.
+        auto_reload=True.
 
         Args:
             question: User query
             max_local_results: Maximum local search results to use
-            use_web_search: Enable web search augmentation
-            auto_reload_empty: Auto-execute crawlers if DB empty
+            enable_web_search: Enable web search augmentation
+            auto_reload: Auto-execute crawlers if DB empty
 
         Returns:
             RAGResponse with answer, citations, and metadata.
@@ -735,14 +777,31 @@ class MainOrchestator:
             'retrieved_documents': []
         }
 
+        if max_local_results is None:
+            max_local_results = self._get_setting("max_local_results")
+
+        if max_web_results is None:
+            max_web_results = self._get_setting("max_web_results")
+
+        if enable_web_search is None:
+            enable_web_search = self._get_setting("enable_web_search")
+
+        if auto_reload is None:
+            auto_reload = self._get_setting("auto_reload")
+
+        if use_initial_corpus is None:
+            use_initial_corpus = self._get_setting("use_initial_corpus")
+
         try:
             self._log_step("query", f"Processing: {question}")
 
             retrieval_result = self.retrieve_documents(
                 question=question,
                 max_local_results=max_local_results,
-                use_web_search=use_web_search,
-                auto_reload_empty=auto_reload_empty,
+                max_web_results=max_web_results,
+                enable_web_search=enable_web_search,
+                auto_reload=auto_reload,
+                use_initial_corpus=use_initial_corpus
             )
             metadata = retrieval_result.get('metadata', metadata)
             all_documents = retrieval_result.get('documents', [])
@@ -788,7 +847,7 @@ class MainOrchestator:
     def _search_locally(
         self,
         query: str,
-        max_results: int = 5
+        max_results: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Execute local search via SRIPipeline.
@@ -800,6 +859,9 @@ class MainOrchestator:
         Returns:
             List of ranked document results with scores
         """
+        if max_results is None:
+            max_results = self._get_setting("max_local_results")        
+
         try:
             results = self.pipeline.search(query, top_k=max_results)
             return results if results else []
@@ -920,6 +982,18 @@ class MainOrchestator:
         except Exception as e:
             logger.warning(f"Failed to count consolidated documents: {str(e)}")
             return 0
+        
+    def _get_default(self, key: str) -> Any:
+        return self.settings.default(key)
+    
+    def _get_setting(self, key: str) -> Any:
+        try:
+            return self.settings[key]
+        except Exception as e:
+            logger.warning(str(e))
+            default = self._get_default(key)
+            logger.warning(f"Using default value: {key} = {default}")
+            return default
 
     # ==================== EVALUATION ====================
 

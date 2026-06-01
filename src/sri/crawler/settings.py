@@ -1,5 +1,5 @@
 """Centralized configuration for crawler spiders and web sources."""
-
+from typing import Any
 
 class CrawlerSettings:
     """Shared configuration values for crawler modules.
@@ -7,52 +7,88 @@ class CrawlerSettings:
     This class centralizes HTTP settings, fetch limits, API endpoints,
     RSS feeds, and search terms used across all crawler spiders.
     """
+    _instance = None  # singleton instance
 
-    # HTTP
-    HTTP_TIMEOUT: float = 10.0
-    HTTP_SCRAPE_TIMEOUT: float = 30.0  # For heavy HTML pages
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(CrawlerSettings, cls).__new__(cls)
+        return cls._instance
 
-    # Fetch limits
-    MAX_ARTICLES: int = 500
-    PER_PAGE: int = 100
+    def __init__(self) -> None:
+        # private dictionary with all settings
+        self._default: dict[str, Any] = {
+            # http
+            "http_timeout": 10.0,
+            "http_scrape_timeout": 30.0,  # for heavy HTML pages
 
-    # Dev.to
-    DEVTO_API_URL: str = "https://dev.to/api/articles"
-    DEVTO_TAGS: list[str] = [
-        "python",
-        "software",
-        "programming",
-        "webdev",
-        "javascript",
-    ]
+            # fetch limits
+            "max_articles_per_spider": 500,
+            "per_page": 100,
 
-    # Hacker News
-    HN_API_URL: str = "https://hn.algolia.com/api/v1/search"
-    HN_SEARCH_TERMS: list[str] = [
-        "software",
-        "python",
-        "programming",
-        "webdev",
-        "javascript",
-    ]
+            # dev.to
+            "devto_api_url": "https://dev.to/api/articles",
+            "devto_tags": ["python", "software", "programming", "webdev", "javascript"],
 
-    # Lobsters
-    LOBSTERS_BASE_URL: str = "https://lobste.rs"
+            # hacker news
+            "hn_api_url": "https://hn.algolia.com/api/v1/search",
+            "hn_search_terms": ["software", "python", "programming", "webdev", "javascript"],
 
-    # RealPython
-    REALPYTHON_BASE_URL: str = "https://realpython.com"
-    REALPYTHON_SITEMAP_URL: str = f"{REALPYTHON_BASE_URL}/sitemap.xml"
+            # lobsters
+            "lobsters_base_url": "https://lobste.rs",
 
-    # RSS feeds
-    THE_NEW_STACK_FEED: str = "https://thenewstack.io/feed/"
-    THE_VERGE_FEED: str = "https://www.theverge.com/rss/index.xml"
+            # realpython
+            "realpython_base_url": "https://realpython.com",
+            "realpython_sitemap_url": "https://realpython.com/sitemap.xml",
 
-    # Database sufficiency thresholds
-    MIN_DOCUMENTS_THRESHOLD: int = 1000  # Minimum docs for "sufficient" database
-    MIN_AVG_SCORE_THRESHOLD: float = 0.5  # Minimum average score for results
-    MIN_RESULTS_FOR_QUERY: int = 3  # Minimum results before web search
-    #TODO: asses using fraction of max documents (specified in query) instead of fixed number for MIN_RESULTS_FOR_QUERY
+            # rss feeds
+            "the_new_stack_feed": "https://thenewstack.io/feed/",
+            "the_verge_feed": "https://www.theverge.com/rss/index.xml",
 
-    # Auto-reload behavior
-    AUTO_CRAWL_ON_EMPTY: bool = True  # Execute crawlers if DB empty
-    AUTO_CRAWL_ON_INSUFFICIENT: bool = True  # Execute if results insufficient
+            # database sufficiency thresholds
+            "min_documents_threshold": 1000,  # minimum docs for "sufficient" database
+            "min_avg_score_threshold": 0.5,   # minimum average score for results
+            "min_results_for_query": 3,       # minimum results before web search
+            # TODO: assess using fraction of max documents instead of fixed number
+
+            # auto-reload behavior
+            "auto_reload": True,        # execute crawlers if DB insufficient
+        }
+
+        # mutable copy of default
+        self._settings: dict[str, Any] = dict(self._default)
+
+    def __getitem__(self, key: str) -> Any:
+        """Return the value of a key if it exists."""
+        try:
+            return self._settings.get(key.lower())
+        except Exception:
+            raise KeyError(f"Key '{key}' not found in CrawlerSettings")
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """
+        Try to modify a configuration value.
+        Returns True if changed, False if the key does not exist or is of a different value.
+        """
+        key = key.lower()
+
+        if not hasattr(self, key):
+            raise KeyError(f"Key '{key}' not found in CrawlerConfig")
+        
+        current_value = self[key]
+        if isinstance(value, type(current_value)):
+            self._settings[key] = value
+        else:
+            raise TypeError(
+            f"Type mismatch for '{key}': expected {type(current_value).__name__}, got {type(value).__name__}"
+        )
+
+    def all(self) -> dict[str, Any]:
+        """Return a copy of all settings."""
+        return dict(self._settings)
+
+    def default(self, key: str) -> Any:
+        """Return the default value for a given key."""
+        key = key.lower()
+        if key in self._default:
+            return self._default[key]
+        raise KeyError(f"Default value for '{key}' not found")

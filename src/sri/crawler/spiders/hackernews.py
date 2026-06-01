@@ -28,8 +28,8 @@ class HackerNewsSpider(ApiSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings.MAX_ARTICLES,
-        per_page: int = CrawlerSettings.PER_PAGE,
+        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
+        per_page: int = CrawlerSettings()["PER_PAGE"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -39,7 +39,7 @@ class HackerNewsSpider(ApiSpider):
         """
 
         super().__init__(max_articles=max_articles)
-        self.per_page = min(per_page, CrawlerSettings.PER_PAGE)
+        self.per_page = min(per_page, CrawlerSettings()["PER_PAGE"])
 
     def _search_terms(self) -> list[str]:
         """Return Algolia search queries for the technology domain.
@@ -48,7 +48,7 @@ class HackerNewsSpider(ApiSpider):
             List of query strings to search for articles.
         """
 
-        return CrawlerSettings.HN_SEARCH_TERMS
+        return CrawlerSettings()["HN_SEARCH_TERMS"]
 
     def _fetch_page(self, term: str, page: int) -> list[dict]:
         """Fetch a single page of articles from the Algolia API.
@@ -69,7 +69,7 @@ class HackerNewsSpider(ApiSpider):
         }
 
         result = self._get_json(
-            CrawlerSettings.HN_API_URL,
+            CrawlerSettings()["HN_API_URL"],
             params=params,
         )
 

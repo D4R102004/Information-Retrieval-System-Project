@@ -54,11 +54,11 @@ class TestSystemInitialization:
         orchestrator = MainOrchestator()
         settings = orchestrator.settings
         
-        assert settings.MIN_DOCUMENTS_THRESHOLD >= 0
-        assert settings.MIN_AVG_SCORE_THRESHOLD >= 0
-        assert settings.MIN_RESULTS_FOR_QUERY >= 0
-        assert isinstance(settings.AUTO_CRAWL_ON_EMPTY, bool)
-        logger.info(f"✓ Configuration loaded: thresholds={settings.MIN_RESULTS_FOR_QUERY}")
+        assert settings["MIN_DOCUMENTS_THRESHOLD"] >= 0
+        assert settings["MIN_AVG_SCORE_THRESHOLD"] >= 0
+        assert settings["MIN_RESULTS_FOR_QUERY"] >= 0
+        assert isinstance(settings["AUTO_CRAWL_ON_EMPTY"], bool)
+        logger.info(f"✓ Configuration loaded: thresholds={settings["MIN_RESULTS_FOR_QUERY"]}")
 
     def test_data_paths_configured(self):
         """Verify data paths are correctly configured."""
@@ -139,8 +139,8 @@ class TestEmptyDatabaseAutoLoad:
         try:
             response = orchestrator.query(
                 question="test query",
-                auto_reload_empty=True,
-                use_web_search=False
+                auto_reload=True,
+                enable_web_search=False
             )
             
             # Should return RAGResponse even if generation fails
@@ -167,7 +167,7 @@ class TestInsufficientDataDetection:
             {'content': 'doc2', 'score': 0.4}
         ]
         
-        insufficiency = orchestrator.detect_insufficiency_for_query(
+        insufficiency = orchestrator._detect_insufficiency_for_query(
             "query",
             results
         )
@@ -177,7 +177,7 @@ class TestInsufficientDataDetection:
         assert 'reasons' in insufficiency
         assert 'metrics' in insufficiency
         
-        if len(results) < orchestrator.settings.MIN_RESULTS_FOR_QUERY:
+        if len(results) < orchestrator.settings["MIN_RESULTS_FOR_QUERY"]:
             assert insufficiency['is_insufficient'] == True
             assert any('few results' in str(r) for r in insufficiency['reasons'])
         logger.info(f"✓ Quantity criterion validated: reasons={insufficiency['reasons']}")
@@ -193,13 +193,13 @@ class TestInsufficientDataDetection:
             {'content': 'doc3', 'score': 0.18}
         ]
         
-        insufficiency = orchestrator.detect_insufficiency_for_query(
+        insufficiency = orchestrator._detect_insufficiency_for_query(
             "query",
             results
         )
         
         avg_score = insufficiency['metrics']['avg_score']
-        threshold = orchestrator.settings.MIN_AVG_SCORE_THRESHOLD
+        threshold = orchestrator.settings["MIN_AVG_SCORE_THRESHOLD"]
         
         if avg_score < threshold:
             assert insufficiency['is_insufficient'] == True
@@ -218,7 +218,7 @@ class TestInsufficientDataDetection:
         ]
   
         query = "machine learning tensorflow neural networks"
-        insufficiency = orchestrator.detect_insufficiency_for_query(
+        insufficiency = orchestrator._detect_insufficiency_for_query(
             query,
             results
         )
@@ -237,7 +237,7 @@ class TestInsufficientDataDetection:
             {'content': 'y', 'score': 0.2}
         ]
         
-        insufficiency = orchestrator.detect_insufficiency_for_query(
+        insufficiency = orchestrator._detect_insufficiency_for_query(
             "test",
             results
         )
@@ -258,8 +258,8 @@ class TestWebSearchIntegration:
         try:
             response = orchestrator.query(
                 question="test",
-                use_web_search=False,
-                auto_reload_empty=False
+                enable_web_search=False,
+                auto_reload=False
             )
             
             assert isinstance(response, RAGResponse)
@@ -276,7 +276,7 @@ class TestWebSearchIntegration:
             {'content': 'minimal content', 'score': 0.2}
         ]
         
-        insufficiency = orchestrator.detect_insufficiency_for_query(
+        insufficiency = orchestrator._detect_insufficiency_for_query(
             "test query",
             minimal_results
         )
@@ -366,7 +366,7 @@ class TestDatabaseManagement:
         
         # Load with minimal articles for testing
         result = orchestrator.load_documents_from_crawlers(
-            max_articles=5,
+            max_articles_per_spider=5,
             force_recrawl=False
         )
         
@@ -393,7 +393,7 @@ class TestDatabaseManagement:
         
         # Step 3: Load
         load_result = orchestrator.load_documents_from_crawlers(
-            max_articles=3,
+            max_articles_per_spider=3,
             force_recrawl=False
         )
         
@@ -416,8 +416,8 @@ class TestQueryPipeline:
         # Test empty query
         response = orchestrator.query(
             question="",
-            auto_reload_empty=False,
-            use_web_search=False
+            auto_reload=False,
+            enable_web_search=False
         )
         
         # Response should be RAGResponse (Pydantic model)
@@ -433,8 +433,8 @@ class TestQueryPipeline:
         try:
             response = orchestrator.query(
                 question="test query",
-                auto_reload_empty=False,
-                use_web_search=False
+                auto_reload=False,
+                enable_web_search=False
             )
             
             if hasattr(response, 'metadata') and response.metadata:
@@ -452,8 +452,8 @@ class TestQueryPipeline:
         try:
             response = orchestrator.query(
                 question="What is machine learning?",
-                auto_reload_empty=False,
-                use_web_search=False
+                auto_reload=False,
+                enable_web_search=False
             )
             
             assert isinstance(response, RAGResponse)
@@ -473,8 +473,8 @@ class TestQueryPipeline:
         try:
             response = orchestrator.query(
                 question="test query",
-                auto_reload_empty=False,
-                use_web_search=False
+                auto_reload=False,
+                enable_web_search=False
             )
             
             # Verify response structure
@@ -564,8 +564,8 @@ class TestErrorHandling:
             try:
                 response = orchestrator.query(
                     question=query,
-                    auto_reload_empty=False,
-                    use_web_search=False
+                    auto_reload=False,
+                    enable_web_search=False
                 )
                 assert isinstance(response, RAGResponse)
             except Exception as e:
@@ -596,7 +596,7 @@ class TestIntegrationScenarios:
         
         # Step 3: Load documents
         load_result = orchestrator.load_documents_from_crawlers(
-            max_articles=5,
+            max_articles_per_spider=5,
             force_recrawl=False
         )
         
@@ -605,8 +605,8 @@ class TestIntegrationScenarios:
             try:
                 response = orchestrator.query(
                     question="test query",
-                    auto_reload_empty=False,
-                    use_web_search=False
+                    auto_reload=False,
+                    enable_web_search=False
                 )
                 assert isinstance(response, RAGResponse)
                 logger.info("✓ Scenario: empty→load→query completed")
@@ -631,7 +631,7 @@ class TestIntegrationScenarios:
             {'content': 'minimal', 'score': 0.15}
         ]
         
-        insufficiency = orchestrator.detect_insufficiency_for_query(
+        insufficiency = orchestrator._detect_insufficiency_for_query(
             "test",
             results
         )
@@ -665,7 +665,7 @@ class TestIntegrationScenarios:
         
         # Step 3: Repopulate
         result = orchestrator.load_documents_from_crawlers(
-            max_articles=3,
+            max_articles_per_spider=3,
             force_recrawl=False
         )
         
@@ -908,7 +908,7 @@ class TestEvaluationModule:
         
         # Load minimal data
         load_result = orchestrator.load_documents_from_crawlers(
-            max_articles=2,
+            max_articles_per_spider=2,
             force_recrawl=False
         )
         
@@ -999,8 +999,8 @@ class TestPerformanceMetrics:
         try:
             response = orchestrator.query(
                 question="simple test",
-                auto_reload_empty=False,
-                use_web_search=False
+                auto_reload=False,
+                enable_web_search=False
             )
             
             if hasattr(response, 'metadata'):

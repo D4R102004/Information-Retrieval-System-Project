@@ -35,7 +35,7 @@ class TheNewStackSpider(BaseSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -46,7 +46,7 @@ class TheNewStackSpider(BaseSpider):
         super().__init__(max_articles)
 
         self._client = httpx.Client(
-            timeout=CrawlerSettings.HTTP_TIMEOUT,
+            timeout=CrawlerSettings()["HTTP_TIMEOUT"],
         )
 
     def fetch_articles(self) -> list[ArticleItem]:
@@ -73,7 +73,7 @@ class TheNewStackSpider(BaseSpider):
         collected: list[ArticleItem] = []
 
         response = self._client.get(
-            CrawlerSettings.THE_NEW_STACK_FEED,
+            CrawlerSettings()["THE_NEW_STACK_FEED"],
         )
 
         soup = BeautifulSoup(response.text, "xml")

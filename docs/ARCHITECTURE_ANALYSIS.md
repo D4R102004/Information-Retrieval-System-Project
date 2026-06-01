@@ -220,7 +220,7 @@ class MainOrchestrator:
 
 ### Query Execution Pipeline
 
-**query(question, max_local_results, use_web_search, auto_reload_empty) → RAGResponse**
+**query(question, max_local_results, enable_web_search, auto_reload) → RAGResponse**
 
 **Execution Steps:**
 1. Input validation (question cannot be empty)
@@ -308,7 +308,7 @@ class MainOrchestrator:
 
 ### Scenario: Query with Auto-Load
 
-**Input:** `query("How does LSI work?", auto_reload_empty=True)`
+**Input:** `query("How does LSI work?", auto_reload=True)`
 
 **Step 1: Health Check**
 - Database is empty (0 indexed documents)
