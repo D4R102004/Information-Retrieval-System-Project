@@ -44,7 +44,10 @@ build/
 .ipynb_checkpoints/
 
 # Data corpus and processed data (generated locally and not part of the repo)
-data/
+data/index/
+data/models/
+data/processed/
+data/raw/
 
 # Logs
 wget-log
