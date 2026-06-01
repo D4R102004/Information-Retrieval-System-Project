@@ -193,7 +193,7 @@ def format_rag_response(response: RAGResponse) -> str:
     for unremoved in unremoved_citations:
         shown_answer = shown_answer.replace(unremoved, "")
     
-    lines.append("#### Final answer")
+    # lines.append("#### Final answer")
     lines.append(shown_answer)
 
     if answer_provided and len(citations) > 0:

@@ -43,14 +43,14 @@ def build_evaluation_tab() -> None:
     with gr.Tabs():
         # ===== Test Configuration Tab =====
         with gr.TabItem("Test Configuration"):
-            gr.Markdown("### Select Test Mode")
+            gr.Markdown("### Status")
 
-            gr.Radio(
-                choices=["Load Default Test", "Design Custom Test"],
-                value="Load Default Test",
-                label="Test Mode",
-                info="Load existing test file or create custom tests",
-            )
+            # test_type = gr.Radio(
+            #     choices=["Load Default Test", "Design Custom Test"],
+            #     value="Load Default Test",
+            #     label="Test Mode",
+            #     info="Load existing test file or create custom tests",
+            # )
 
             status_message = gr.Textbox(label="Status", interactive=False, lines=2)
 
@@ -121,6 +121,29 @@ def build_evaluation_tab() -> None:
                         results_display,
                     ],
                 )
+            
+            with gr.Group():
+                gr.Markdown("### Clear Test Set")
+                clean_tests_btn = gr.Button("🗑️ Clear", variant="primary")
+
+                def clear_test_set() -> tuple[str, list, list, str]:
+                    """Clear current test set from state and UI."""
+                    return (
+                        "[OK] Cleared test set",
+                        [],
+                        [],
+                        "<p>Test set cleared</p>",
+                    )
+                
+                clean_tests_btn.click(
+                    clear_test_set,
+                    outputs=[
+                        status_message,
+                        test_queries_state,
+                        test_queries_display,
+                        results_display,
+                    ],
+                )
 
         # ===== Test Designer Tab =====
         with gr.TabItem("Test Designer"):
@@ -162,13 +185,13 @@ def build_evaluation_tab() -> None:
             )
 
             def add_query_to_set(
-                q_id: str, q_text: str, g_type: str, rel_docs: str, grades: str
+                q_id: str, q_text: str, g_type: str, rel_docs: str, grades: str, current:list
             ) -> tuple[str, list, list]:
                 """Add a single query to test set."""
                 if not q_id or not q_text or not rel_docs:
                     return (
                         "[X] Query ID, text, and relevant docs are required",
-                        test_queries_state.value,
+                        current,
                         [],
                     )
 
@@ -188,7 +211,6 @@ def build_evaluation_tab() -> None:
                             grade_dict[doc_id.strip()] = int(grade.strip())
                         query_entry["grades"] = grade_dict
 
-                    current = test_queries_state.value or []
                     current.append(query_entry)
 
                     table_data = [
@@ -209,11 +231,11 @@ def build_evaluation_tab() -> None:
                         table_data,
                     )
                 except Exception as e:
-                    return f"[X] Error: {str(e)}", test_queries_state.value, []
+                    return f"[X] Error: {str(e)}", current, []
 
             add_query_btn.click(
                 add_query_to_set,
-                inputs=[query_id, query_text, grade_type, relevant_docs, grades_input],
+                inputs=[query_id, query_text, grade_type, relevant_docs, grades_input, test_queries_state],
                 outputs=[test_set_message, test_queries_state, test_queries_display],
             )
 
@@ -232,18 +254,16 @@ def build_evaluation_tab() -> None:
 
             eval_progress = gr.Textbox(label="Progress", interactive=False, lines=2)
 
-            def get_test_info() -> str:
+            def get_test_info(tests:list) -> str:
                 """Get current test set information."""
-                tests = test_queries_state.value
                 if not tests:
                     return "No test set loaded"
                 return f"Test queries: {len(tests)}\nStatus: Ready to run"
 
-            def run_evaluation() -> tuple[str]:
+            def run_evaluation(tests:list) -> tuple[str, dict]:
                 """Execute evaluation on test set."""
-                tests = test_queries_state.value
                 if not tests:
-                    return ("[X] No test set loaded",)
+                    return ("[X] No test set loaded:", {})
 
                 try:
                     test_spec = {"test_queries": tests}
@@ -255,25 +275,33 @@ def build_evaluation_tab() -> None:
                             f"Queries evaluated: {result.get('aggregate', {}).get('num_queries', 0)}\n"
                             f"Time: {result.get('execution_time_seconds', 0):.2f}s"
                         )
-                        evaluation_result_state.value = result
-                        return (eval_progress_msg,)
+                        return (eval_progress_msg, result,)
                     else:
                         return (
                             f"[X] Evaluation failed:\n{result.get('message', 'Unknown error')}",
+                            {}
                         )
                 except Exception as e:
-                    return (f"[X] Error: {str(e)}",)
+                    return (f"[X] Error: {str(e)}", {})
 
-            execution_info.value = get_test_info()
-            run_eval_btn.click(run_evaluation, outputs=[eval_progress])
+            run_eval_btn.click(
+                            get_test_info,
+                            inputs=[test_queries_state],
+                            outputs=[execution_info],
+                            )
+
+            run_eval_btn.click(
+                            run_evaluation,
+                            inputs=[test_queries_state],
+                            outputs=[eval_progress, evaluation_result_state],
+                            )
 
         # ===== Results Visualization Tab =====
         with gr.TabItem("Results"):
             gr.Markdown("### Evaluation Results")
 
-            def display_results() -> str:
+            def display_results(result:dict) -> str:
                 """Display evaluation results with visualization."""
-                result = evaluation_result_state.value
                 if not result or result.get("status") != "success":
                     return (
                         "<p>No evaluation results available. Run evaluation first.</p>"
@@ -295,4 +323,4 @@ def build_evaluation_tab() -> None:
                 return html_content
 
             display_results_btn = gr.Button("📊 Display Results")
-            display_results_btn.click(display_results, outputs=[results_display])
+            display_results_btn.click(display_results, inputs = [evaluation_result_state], outputs=[results_display])
