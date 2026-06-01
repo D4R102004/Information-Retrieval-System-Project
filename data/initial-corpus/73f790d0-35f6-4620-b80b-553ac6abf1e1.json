@@ -1,0 +1,14 @@
+{
+  "id": "73f790d0-35f6-4620-b80b-553ac6abf1e1",
+  "title": "Tell HN: Submit comments to IRS re tax treatment of software dev expenses",
+  "url": "",
+  "date": "2023-11-02T21:26:02Z",
+  "content": "Public comments can be submitted regarding IRS Notice 2023-63 &quot;Guidance on Amortization of Specified Research or Experimental Expenditures under Section 174,&quot; here:\n<a href=\"https:&#x2F;&#x2F;www.regulations.gov&#x2F;document&#x2F;IRS-2023-0040-0003&#x2F;comment\" rel=\"nofollow noreferrer\">https:&#x2F;&#x2F;www.regulations.gov&#x2F;document&#x2F;IRS-2023-0040-0003&#x2F;comm...</a><p>The guidance in question can be found here:\n<a href=\"https:&#x2F;&#x2F;www.irs.gov&#x2F;pub&#x2F;irs-drop&#x2F;n-23-63.pdf\" rel=\"nofollow noreferrer\">https:&#x2F;&#x2F;www.irs.gov&#x2F;pub&#x2F;irs-drop&#x2F;n-23-63.pdf</a><p>There was previous discussion of these rules on HN here:\n<a href=\"https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=35614313\">https:&#x2F;&#x2F;news.ycombinator.com&#x2F;item?id=35614313</a><p>To very briefly summarize, these rules force certain research expenses to be treated under Section 174 and thus capitalized and amortized over a period of 5 years, instead of under Section 162 (ordinary and necessary business expenses) which are immediately deducted in the year they occur.<p>Part of the issue is the extremely broad classification of &quot;research expenses&quot;. Notably, it classifies virtually all software development as research, as well as the proportional share of all overhead&#x2F;fringe expenses. It also changes the treatment of contracted research activities (note that includes software). This has a hugely negative impact for early-stage startups, contract research firms (i.e. SBIR companies), and independent software developers.<p>To construct a basic example:<p><pre><code>  Revenue:  $100k \n  Expenses: $100k (developer salaries)\n  Net operating income:  $0\n  Taxable income: $100k - 0.1x100k = $90k (first year deduction is 10% of SREs)\n</code></pre>\nCome tax time, you now owe the government $18-30k taxes on your $0 real income.",
+  "source": "hackernews",
+  "tags": [
+    "story",
+    "author_mNovak",
+    "story_38120388",
+    "ask_hn"
+  ]
+}

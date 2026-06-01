@@ -22,6 +22,7 @@ class OrchestratorService:
 
     def __init__(self) -> None:
         self._orchestrator = None
+        self.use_initial_corpus = True  # Default to including initial corpus documents in retrieval and reindexing
 
     def _get_orchestrator(self):
         """Instantiate the orchestrator only when the UI needs it."""
@@ -32,7 +33,7 @@ class OrchestratorService:
         return self._orchestrator
 
     def retrieve_documents(self, question: str, **kwargs: Any) -> dict[str, Any]:
-        return self._get_orchestrator().retrieve_documents(question, **kwargs)
+        return self._get_orchestrator().retrieve_documents(question, use_initial_corpus=self.use_initial_corpus, **kwargs)
 
     def stream_retrieve_documents(self, question: str, **kwargs: Any) -> Iterator[dict[str, Any]]:
         """Stream retrieval progress events and the final retrieval payload."""
@@ -77,7 +78,10 @@ class OrchestratorService:
 
         def _run_retrieval() -> None:
             try:
-                result_holder["value"] = self._get_orchestrator().retrieve_documents(question, **kwargs)
+                result_holder["value"] = self._get_orchestrator().retrieve_documents(question, 
+                                                                                     use_initial_corpus=self.use_initial_corpus, 
+                                                                                     **kwargs
+                                                                                     )
             except Exception as exc:
                 error_holder["error"] = exc
             finally:
@@ -125,13 +129,16 @@ class OrchestratorService:
         return self._get_orchestrator().check_database_health()
 
     def load_documents_from_crawlers(self, **kwargs: Any) -> dict[str, Any]:
-        return self._get_orchestrator().load_documents_from_crawlers(**kwargs)
+        return self._get_orchestrator().load_documents_from_crawlers(use_initial_corpus=self.use_initial_corpus, **kwargs)
 
     def evaluate_test(self, test_spec: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._get_orchestrator().evaluate_test(test_spec)
 
     def count_raw_documents(self, folder: str = "*") -> int:
         return self._get_orchestrator().crawler_caller.count_raw_documents(folder.lower())
+    
+    def count_initial_corpus_documents(self) -> int:
+        return self._get_orchestrator().crawler_caller.count_initial_corpus_documents()
     
     def get_last_crawled_date(self, source: str) -> str:
         return self._get_orchestrator().crawler_caller.get_last_crawled(source.lower())

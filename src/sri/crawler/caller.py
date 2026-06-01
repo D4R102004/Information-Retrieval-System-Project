@@ -104,6 +104,7 @@ class CrawlerCaller:
         self,
         raw_dir: str = "data/raw",
         documents_output: str = "data/documents.json",
+        initial_corpus_dir: str = "dara/initial-corpus"
     ):
         """
         Initialize crawler coordinator.
@@ -113,6 +114,7 @@ class CrawlerCaller:
             documents_output: Path to consolidated documents file
         """
         self.raw_dir = Path(raw_dir)
+        self.initial_corpus_dir = Path(initial_corpus_dir)
         self.documents_output = Path(documents_output)
         self.pipeline = JsonPipeline(output_directory=str(raw_dir))
 
@@ -190,25 +192,33 @@ class CrawlerCaller:
 
         return execution_report
 
-    def consolidate_raw_to_documents(self) -> List[Dict[str, Any]]:
+    def consolidate_raw_to_documents(self, use_initial_corpus: bool = True) -> List[Dict[str, Any]]:
         """
         Load and consolidate all raw JSON files into unified document list.
 
         Scans data/raw/{source}/*.json and merges into single collection,
         ensuring documents have required fields and valid structure.
 
+        Args:
+            use_initial_corpus: If True, consolidate documents from initial corpus directory
+
         Returns:
             List of consolidated document dictionaries
         """
-        consolidated = []
+        consolidated: Dict[str, Dict[str, Any]] = {}
+        source_dirs = []
 
-        logger.info(f"Consolidating raw documents from {self.raw_dir}")
+        logger.info(f"Consolidating raw documents from {self.raw_dir}{(" and from " + str(self.initial_corpus_dir) if use_initial_corpus else '')}...")
 
+        # Include initial corpus if enabled and exists
+        if use_initial_corpus and self.initial_corpus_dir and self.initial_corpus_dir.is_dir():
+            source_dirs.append(self.initial_corpus_dir)
+        
+        # Add all source directories from raw_dir
+        source_dirs.extend([source_dir for source_dir in self.raw_dir.glob("*/") if source_dir.is_dir()])
+        
         # Iterate through source directories
-        for source_dir in self.raw_dir.glob("*/"):
-            if not source_dir.is_dir():
-                continue
-
+        for source_dir in source_dirs:
             source_name = source_dir.name
             count = 0
 
@@ -234,8 +244,10 @@ class CrawlerCaller:
                         doc["title"] = clean_scraped_text(str(doc.get("title", "")))
                         doc["content"] = clean_scraped_text(str(doc.get("content", "")))
 
-                        consolidated.append(doc)
-                        count += 1
+                        # Deduplicate by ID across sources, prefer first occurrence
+                        if doc.get("id") and doc["id"] not in consolidated:
+                            consolidated[doc["id"]] = doc
+                            count += 1
 
                     except json.JSONDecodeError as e:
                         logger.warning(f"Invalid JSON in {json_file}: {e}")
@@ -247,7 +259,7 @@ class CrawlerCaller:
                 logger.error(f"Error consolidating {source_name}: {e}")
 
         logger.info(f"Total consolidated: {len(consolidated)} documents")
-        return consolidated
+        return list(consolidated.values())
 
     def save_consolidated_documents(
         self, documents: List[Dict[str, Any]]
@@ -398,6 +410,18 @@ class CrawlerCaller:
         count = sum(1 for _ in self.raw_dir.glob(f"{folder}/*.json"))
         return count
     
+    def count_initial_corpus_documents(self) -> int:
+        """
+        Count documents in the initial corpus directory.
+
+        Returns:
+            Number of JSON files in the initial corpus directory, or 0 if it doesn't exist.
+        """
+        if self.initial_corpus_dir and self.initial_corpus_dir.is_dir():
+            count = sum(1 for _ in self.initial_corpus_dir.glob("*.json"))
+            return count
+        return 0
+    
     def get_last_crawled(self, source: str) -> str:
         """
         Gets the date of the last crawl event for a given source.
@@ -436,7 +460,7 @@ class CrawlerCaller:
             return 0
 
     def execute_full_pipeline(
-        self, max_articles: int = 500, force_recrawl: bool = False
+        self, max_articles: int = 500, force_recrawl: bool = False, use_initial_corpus: bool = True
     ) -> Dict[str, Any]:
         """
         Execute complete pipeline: crawl → consolidate → save.
@@ -444,6 +468,7 @@ class CrawlerCaller:
         Args:
             max_articles: Maximum articles per spider
             force_recrawl: If True, run crawlers even if raw data exists
+            use_initial_corpus: If True, include initial corpus in the pipeline
 
         Returns:
             Execution report with full pipeline results
@@ -461,7 +486,7 @@ class CrawlerCaller:
             }
 
         # Consolidate and save
-        documents = self.consolidate_raw_to_documents()
+        documents = self.consolidate_raw_to_documents(use_initial_corpus)
         self.save_consolidated_documents(documents)
 
         total_time = time.time() - start_time

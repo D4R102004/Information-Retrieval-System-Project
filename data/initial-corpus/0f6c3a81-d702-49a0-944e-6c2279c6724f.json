@@ -1,0 +1,14 @@
+{
+  "id": "0f6c3a81-d702-49a0-944e-6c2279c6724f",
+  "title": "Show HN: Scripton – Python IDE with built-in realtime visualizations",
+  "url": "https://scripton.dev",
+  "date": "2025-02-18T14:57:09Z",
+  "content": "Hey HN, Scripton is a Python IDE built for fast, interactive visualizations and exploratory programming — without the constraints of notebooks.<p>Why another Python IDE? Scripton hopes to fill a gap in the Python development ecosystem by being an IDE that:<p>1.  Focuses on easy, fast, and interactive visualizations (and exposes rich JS plotting libraries like Observable Plot and Plotly directly to Python)\n2.  Provides a tightly integrated REPL for rapid prototyping and exploration\n3.  Is script-centric (as opposed to, say, notebook-style)<p>A historical detour for why these 3 features: Not so long ago (ok, well, maybe over a decade ago...), the go-to environment for many researchers in scientific fields would have been something like MATLAB. Generating multiple simultaneous visualizations (potentially dynamic) directly from your scripts, rapidly prototyping in the REPL, all without giving up on writing regular scripts. Over time, many switched over to Python but there wasn&#x27;t an equivalent environment offering similar capabilities. IPython Jupyter notebooks eventually became the de facto replacement. And while notebooks are great for many things (indeed, it wasnt uncommon for folks to switch between MATLAB and Mathematica Notebooks), they do make certain trade-offs that prevent them from being a full substitute.<p>Inner workings:<p>-   Implemented in C++ (IDE &lt;-&gt; Python IPC), Python, TypeScript (UI), WGSL (WebGPU-based visualizations)<p>-   While the editor component is based off Monaco, the IDE is not a vscode fork and was written from scratch. Happy to chat about the trade-offs if anyone's interested<p>-   Uses a custom Python debugger written from scratch (which enables features like visualizing intermediate outputs while paused in the debugger)<p>Scripton&#x27;s under active development (currently only available for macOS but Linux and Windows support is planned). Would love for you to try it out and share your thoughts! Since this is HN, I’m also happy to chat about its internals.",
+  "source": "hackernews",
+  "tags": [
+    "story",
+    "author_nightcraft",
+    "story_43090214",
+    "show_hn"
+  ]
+}

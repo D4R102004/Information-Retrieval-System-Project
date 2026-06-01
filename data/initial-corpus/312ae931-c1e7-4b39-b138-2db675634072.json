@@ -1,0 +1,12 @@
+{
+  "id": "312ae931-c1e7-4b39-b138-2db675634072",
+  "title": "NixOS 26.05 released",
+  "url": "https://nixos.org/blog/announcements/2026/nixos-2605/",
+  "date": "2026-05-30T09:47:40.000-05:00",
+  "source": "lobsters",
+  "tags": [
+    "nix",
+    "release"
+  ],
+  "content": "Published on Sat May 30 2026  Hey everyone, we areyayayayakaandjopejoe1, the release managers of the newest release of NixOS. We are very proud to announce the public availability of NixOS 26.05 “Yarara”. NixOS is a Linux distribution. Its underlying package repository Nixpkgs can also be used on other Linux systems and macOS with the Nix package manager. This release will receive bugfixes and security updates for seven months (up until 2026-12-31).\nThe old release 25.11 “Xantusia” is now officially deprecated and will reach its end-of-life and stop receiving security updates after 2026-06-30. The 26.05 release was made possible due to the efforts of2842contributors, who authored59703commits since the previous release. Our vast and routinely maintained set of packages has also been updated. This release of Nixpkgs In addition to packages from Nixpkgs, the NixOS Linux distribution also features composable configuration modules and integration tests for distributed systems.\nThis release of NixOS Stage 1 (a.k.a. initrd) is now based on systemd by default, and the old scripted implementation is deprecated and scheduled for removal in 26.11. This will be the last release of Nixpkgs to support x86_64-darwin.\nPlatform support will be maintained and binaries built until Nixpkgs 26.05 goes out of support at the end of 2026.\nFor 26.11, due to Apple’s deprecation of the platform and limited build infrastructure and developer time, we will no longer build packages for x86_64-darwin or support building them from source. GNOME has been updated to version 50 “Tokyo”, introducing accessibility enhancements, display handling improvements and more. Refer to therelease notesfor more details. GCC has been updated to version 15. LLVM remains at version 21. We want to personally thank We also want to thank all contributors who made this release possible! We are grateful for the opportunity to support the community as release managers and to learn about and participate in the release process. Seeing all the contributors working in their area of the project to improve it has been an exciting experience. We would like to thank everyone in the community for that. We are looking forward to the next release, NixOS 26.11 “Zokor”."
+}

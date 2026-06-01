@@ -70,7 +70,7 @@ class MainOrchestator:
 
     # ==================== DATABASE MANAGEMENT ====================
 
-    def clear_all_indices(self) -> Dict[str, Any]:
+    def clear_all_indices(self, clear_raw: bool = True) -> Dict[str, Any]:
         """
         Clear all indices, models, and database state.
 
@@ -80,16 +80,20 @@ class MainOrchestator:
         - Cached LSI models
         - All indices
 
+        Args:
+            clear_raw: If True, also deletes raw JSON files from crawlers
+
         Returns:
             Dict with operation status: {'success': bool, 'message': str, 'timestamp': str}
         """
         self._log_step("clear_all_indices", "Starting complete database cleanup")
         try:
-            cache_result = self.crawler_caller.clear_cached_documents()
-            self._log_step(
-                "clear_all_indices",
-                f"Cleared crawler cache: {cache_result.get('deleted_files', 0)} files"
-            )
+            if clear_raw:
+                cache_result = self.crawler_caller.clear_cached_documents()
+                self._log_step(
+                    "clear_all_indices",
+                    f"Cleared crawler cache: {cache_result.get('deleted_files', 0)} files"
+                )
 
             self.pipeline.vstore.clear_all()
             self._log_step("clear_all_indices", "VectorStore cleared successfully")
@@ -115,7 +119,8 @@ class MainOrchestator:
     def load_documents_from_crawlers(
         self,
         max_articles: int = 1000,
-        force_recrawl: bool = False
+        force_recrawl: bool = False,
+        use_initial_corpus: bool = True
     ) -> Dict[str, Any]:
         """
         Execute full crawl→consolidate→index pipeline.
@@ -126,6 +131,7 @@ class MainOrchestator:
         Args:
             max_articles: Maximum articles per spider
             force_recrawl: If True, ignore existing crawls and re-execute
+            use_initial_corpus: If True, include documents from initial corpus directory
 
         Returns:
             Dict with execution results: {
@@ -154,7 +160,8 @@ class MainOrchestator:
                 # Execute crawlers only when we have no consolidated file
                 crawl_result = self.crawler_caller.execute_full_pipeline(
                     force_recrawl=force_recrawl,
-                    max_articles=max_articles
+                    max_articles=max_articles,
+                    use_initial_corpus=use_initial_corpus
                 )
 
                 status = crawl_result.get('status') if isinstance(crawl_result, dict) else None
@@ -167,7 +174,7 @@ class MainOrchestator:
                         'duration_seconds': time.time() - start_time
                     }
 
-                documents = self.crawler_caller.consolidate_raw_to_documents()
+                documents = self.crawler_caller.consolidate_raw_to_documents(use_initial_corpus=use_initial_corpus)
                 self._log_step("load_documents", f"Consolidated {len(documents)} documents from raw data")
 
             if not documents:
@@ -292,7 +299,7 @@ class MainOrchestator:
                 'status': 'error'
             }
 
-    def reindex_database(self, use_crawlers: bool = True, db_health: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def reindex_database(self, use_crawlers: bool = True, db_health: Optional[Dict[str, Any]] = None, use_initial_corpus: bool = True) -> Dict[str, Any]:
         """
         Rebuild database indices to ensure minimum document threshold.
 
@@ -307,6 +314,7 @@ class MainOrchestator:
         Args:
             use_crawlers: Whether to use crawlers for indexing
             db_health: Optional pre-fetched database health status to inform strategy
+            use_initial_corpus: If True, include documents from initial corpus directory during consolidation
 
         Returns:
             Dict with reindexing status: {
@@ -326,17 +334,15 @@ class MainOrchestator:
                 db_health = self.check_database_health()
             doc_count = int(db_health.get('document_count', 0))
             file_count = int(db_health.get('file_document_count', 0))
-            raw_count = 0
-            try:
-                raw_count = int(self.crawler_caller.count_raw_documents())
-            except Exception:
-                raw_count = 0
+            raw_count = self._count_raw_documents()
+            initial_corpus_count = self._count_initial_corpus_documents()
 
             self._log_step(
                 "reindex_database",
-                f"DB state -> indexed:{doc_count}, consolidated:{file_count}, raw:{raw_count}"
+                f"DB state -> indexed:{doc_count}, consolidated:{file_count}, raw:{raw_count}, initial_corpus:{initial_corpus_count}"
             )
 
+            initial_corpus_count = initial_corpus_count if use_initial_corpus else 0
             doc_count = 0
             crawled = False
 
@@ -353,10 +359,10 @@ class MainOrchestator:
                     logger.warning(f"Failed to index consolidated documents: {e}")
 
             # Attempt 2: Consolidate and index raw documents
-            if doc_count < MIN_DB_DOCUMENTS and raw_count >= MIN_DB_DOCUMENTS:
+            if doc_count < MIN_DB_DOCUMENTS and raw_count + initial_corpus_count >= MIN_DB_DOCUMENTS:
                 self._log_step("reindex_database", f"Consolidating {raw_count} raw documents")
                 try:
-                    docs = self.crawler_caller.consolidate_raw_to_documents()
+                    docs = self.crawler_caller.consolidate_raw_to_documents(use_initial_corpus=use_initial_corpus)
                     if docs:
                         self.crawler_caller.save_consolidated_documents(docs)
                         self.pipeline.index(docs)
@@ -369,7 +375,7 @@ class MainOrchestator:
             if doc_count < MIN_DB_DOCUMENTS and use_crawlers:
                 self._log_step("reindex_database", "Below minimum threshold; executing crawlers")
                 try:
-                    load_result = self.load_documents_from_crawlers(force_recrawl=True)
+                    load_result = self.load_documents_from_crawlers(force_recrawl=True, use_initial_corpus=use_initial_corpus)
                     if load_result.get('success'):
                         doc_count = load_result.get('indexed_documents', 0)
                         self._log_step(
@@ -518,7 +524,8 @@ class MainOrchestator:
         question: str,
         max_local_results: int = 5,
         use_web_search: bool = True,
-        auto_reload_empty: bool = True
+        auto_reload_empty: bool = True,
+        use_initial_corpus: bool = True
     ) -> Dict[str, Any]:
         """
         Retrieve relevant documents for a question.
@@ -531,6 +538,7 @@ class MainOrchestator:
             max_local_results: Maximum local search results to use
             use_web_search: Enable web search augmentation
             auto_reload_empty: Auto-execute crawlers if DB is below minimum threshold
+            use_initial_corpus: If True, include initial corpus documents in reindexing if necessary
 
         Returns:
             Dict with retrieval output: {
@@ -564,15 +572,12 @@ class MainOrchestator:
         db_health = self.check_database_health()
         doc_count = int(db_health.get('document_count', 0))
         file_count = int(db_health.get('file_document_count', 0))
-        raw_count = 0
-        try:
-            raw_count = int(self.crawler_caller.count_raw_documents())
-        except Exception:
-            raw_count = 0
+        raw_count = self._count_raw_documents()
+        initial_corpus_count = self._count_initial_corpus_documents()
 
         self._log_step(
             "retrieve_documents",
-            f"DB counts -> indexed:{doc_count}, consolidated_file:{file_count}, raw:{raw_count}"
+            f"DB counts -> indexed:{doc_count}, consolidated_file:{file_count}, raw:{raw_count}, initial_corpus:{initial_corpus_count}"
         )
 
         # Only allow search when there are at least MIN_DB_DOCUMENTS indexed documents.
@@ -580,7 +585,7 @@ class MainOrchestator:
 
         # If not enough indexed docs, attempt reindexing strategies.
         if not allowed_to_search:
-            reindex_result = self.reindex_database(auto_reload_empty, db_health)
+            reindex_result = self.reindex_database(auto_reload_empty, db_health, use_initial_corpus)
             allowed_to_search = (reindex_result.get('success', False) and
                                 reindex_result.get('indexed_documents', 0) >= MIN_DB_DOCUMENTS) # safety double-check
             metadata['auto_crawled'] = reindex_result.get('crawled', False)
@@ -876,6 +881,45 @@ class MainOrchestator:
                 seen_content.add(content_hash)
 
         return consolidated
+    
+    def _count_raw_documents(self) -> int:
+        """
+        Count total raw documents available across all crawler output directories.
+
+        Returns:
+            Total count of raw documents available for consolidation and indexing.
+        """
+        try:
+            return self.crawler_caller.count_raw_documents()
+        except Exception as e:
+            logger.warning(f"Failed to count raw documents: {str(e)}")
+            return 0
+        
+    def _count_initial_corpus_documents(self) -> int:
+        """
+        Count total documents available in the initial corpus directory.
+
+        Returns:
+            Total count of initial corpus documents available for consolidation and indexing.
+        """
+        try:
+            return self.crawler_caller.count_initial_corpus_documents()
+        except Exception as e:
+            logger.warning(f"Failed to count initial corpus documents: {str(e)}")
+            return 0
+        
+    def _count_consolidated_documents(self) -> int:
+        """
+        Count total documents available in the consolidated documents.json file.
+
+        Returns:
+            Total count of consolidated documents available for indexing.
+        """
+        try:
+            return self.crawler_caller.count_consolidated_documents()
+        except Exception as e:
+            logger.warning(f"Failed to count consolidated documents: {str(e)}")
+            return 0
 
     # ==================== EVALUATION ====================
 
@@ -1060,8 +1104,9 @@ class MainOrchestator:
             Dict with comprehensive system state
         """
         db_health = self.check_database_health()
-        raw_count = self.crawler_caller.count_raw_documents()
-        consolidated_count = self.crawler_caller.count_consolidated_documents()
+        raw_count = self._count_raw_documents()
+        initial_corpus_count = self._count_initial_corpus_documents()
+        consolidated_count = self._count_consolidated_documents()
 
         return {
             'database': {
@@ -1072,6 +1117,7 @@ class MainOrchestator:
                 'is_empty': db_health['is_empty']
             },
             'crawlers': {
+                'initial_corpus_documents': initial_corpus_count,
                 'raw_documents': raw_count,
                 'consolidated_documents': consolidated_count
             },

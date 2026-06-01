@@ -2,76 +2,6 @@
   "test_queries": [
     {
       "query_id": "q1",
-      "query": "what is docker and containerization",
-      "relevant": [
-        "2258ef56-c41c-4b27-b00e-52c661435fdf",
-        "4b6b137b-df26-4824-baf8-e71c72427493",
-        "55e82608-3aa0-4877-bbc4-1a534f727987"
-      ],
-      "grades": {
-        "2258ef56-c41c-4b27-b00e-52c661435fdf": 1,
-        "4b6b137b-df26-4824-baf8-e71c72427493": 1,
-        "55e82608-3aa0-4877-bbc4-1a534f727987": 1
-      }
-    },
-    {
-      "query_id": "q2",
-      "query": "python machine learning frameworks",
-      "relevant": [
-        "00f43711-0011-4161-b4fe-8226aec2dc1d",
-        "11247f0f-18c3-4234-9bf0-6c47f1bb3105",
-        "123eebd3-84c5-4530-afac-a82561de66e1"
-      ],
-      "grades": {
-        "00f43711-0011-4161-b4fe-8226aec2dc1d": 1,
-        "11247f0f-18c3-4234-9bf0-6c47f1bb3105": 1,
-        "123eebd3-84c5-4530-afac-a82561de66e1": 1
-      }
-    },
-    {
-      "query_id": "q3",
-      "query": "git version control workflow",
-      "relevant": [
-        "00f43711-0011-4161-b4fe-8226aec2dc1d",
-        "0c2fdc43-4643-4434-be86-9303e7de0bfa",
-        "0e4eff0e-4a59-4f73-83af-194f4784b53d"
-      ],
-      "grades": {
-        "00f43711-0011-4161-b4fe-8226aec2dc1d": 1,
-        "0c2fdc43-4643-4434-be86-9303e7de0bfa": 1,
-        "0e4eff0e-4a59-4f73-83af-194f4784b53d": 1
-      }
-    },
-    {
-      "query_id": "q4",
-      "query": "REST API design best practices",
-      "relevant": [
-        "00f43711-0011-4161-b4fe-8226aec2dc1d",
-        "0e4eff0e-4a59-4f73-83af-194f4784b53d",
-        "11247f0f-18c3-4234-9bf0-6c47f1bb3105"
-      ],
-      "grades": {
-        "00f43711-0011-4161-b4fe-8226aec2dc1d": 1,
-        "0e4eff0e-4a59-4f73-83af-194f4784b53d": 1,
-        "11247f0f-18c3-4234-9bf0-6c47f1bb3105": 1
-      }
-    },
-    {
-      "query_id": "q5",
-      "query": "RAG retrieval augmented generation",
-      "relevant": [
-        "00f43711-0011-4161-b4fe-8226aec2dc1d",
-        "0c2fdc43-4643-4434-be86-9303e7de0bfa",
-        "0e4eff0e-4a59-4f73-83af-194f4784b53d"
-      ],
-      "grades": {
-        "00f43711-0011-4161-b4fe-8226aec2dc1d": 1,
-        "0c2fdc43-4643-4434-be86-9303e7de0bfa": 1,
-        "0e4eff0e-4a59-4f73-83af-194f4784b53d": 1
-      }
-    },
-    {
-      "query_id": "q6",
       "query": "How to build realtime chat application",
       "relevant": [
         "010a7286-edfa-4143-9e46-462829787546"
@@ -81,19 +11,7 @@
       }
     },
     {
-      "query_id": "q7",
-      "query": "Web development with Next.js and Tailwind",
-      "relevant": [
-        "005ebddb-50de-4c85-91ba-15e7b8796f5b",
-        "000e5347-eb8a-4d5d-bc46-2bc072d7cdcb"
-      ],
-      "grades": {
-        "005ebddb-50de-4c85-91ba-15e7b8796f5b": 3,
-        "000e5347-eb8a-4d5d-bc46-2bc072d7cdcb": 2
-      }
-    },
-    {
-      "query_id": "q8",
+      "query_id": "q2",
       "query": "AI portfolio assistant tools",
       "relevant": [
         "0133fdba-57de-465a-a29b-055328eb627f"
@@ -103,17 +21,7 @@
       }
     },
     {
-      "query_id": "q9",
-      "query": "Data validation for Mozambique identifiers",
-      "relevant": [
-        "010d877b-6663-42a5-ac69-447f02005940"
-      ],
-      "grades": {
-        "010d877b-6663-42a5-ac69-447f02005940": 3
-      }
-    },
-    {
-      "query_id": "q10",
+      "query_id": "q3",
       "query": "Python implementation of AI systems",
       "relevant": [
         "0133fdba-57de-465a-a29b-055328eb627f",

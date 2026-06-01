@@ -1,0 +1,13 @@
+{
+  "id": "cc4188af-41fa-4001-b149-9f60d2ea4725",
+  "title": "Update on free software and telemetry",
+  "url": "https://about.gitlab.com/blog/2019/10/10/update-free-software-and-telemetry/",
+  "date": "2019-10-23T18:48:29Z",
+  "content": "We have launched important updates to our Terms of Service surrounding our use of telemetry services. Starting with GitLab 12.4, existing customers who use our proprietary products (that is, GitLab.com and the Enterprise Edition of our self-managed offerings) may notice additional Javascript snippets that will interact with GitLab and&#x2F;or third-party SaaS telemetry service (such as Pendo).<p>For GitLab.com users:  as we roll out this update you will be prompted to accept our new Terms of Service. Until the new Terms are accepted access to the web interface and API will be blocked. So, for users who have integrations with our API this will cause a brief pause in service via our API until the terms have been accepted by signing in to the web interface.<p>For Self-managed users: GitLab Core will continue to be free software with no changes. If you want to install your own instance of GitLab without the proprietary software being introduced as a result of this change, GitLab Community Edition (CE) remains a great option. It is licensed under the MIT license (https:&#x2F;&#x2F;en.wikipedia.org&#x2F;wiki&#x2F;MIT_License) and will contain no proprietary software. Many open source software projects use GitLab CE for their SCM and CI needs. Again, there will be no changes to GitLab CE.<p>Key Updates:<p>- GitLab.com (GitLab’s SaaS offering)and GitLab&#x27;s proprietary Self-Managed packages (Starter, Premium, and Ultimate) will now include additional Javascript snippets (both open source and proprietary) that will interact with both GitLab and possibly third-party SaaS telemetry services (we will be using Pendo(https:&#x2F;&#x2F;www.pendo.io)).<p>- We will disclose all such usage in our privacy policy, as well as what we are using the data for. We will also ensure that any third-party telemetry service we use will have data protection standards at least as strong as GitLab and we will aim for SOC2 compliance. Pendo is SOC2 compliant.<p>If you have any questions please contact us at support@gitlab.com",
+  "source": "hackernews",
+  "tags": [
+    "story",
+    "author_sm4rk0",
+    "story_21337594"
+  ]
+}
