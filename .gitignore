@@ -52,3 +52,10 @@ data/raw/
 # Logs
 wget-log
 build_docker.py
+
+# Latex
+*.aux
+*.log
+*.synctex.gz
+*.toc
+*.out
