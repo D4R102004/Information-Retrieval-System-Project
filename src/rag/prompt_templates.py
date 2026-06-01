@@ -57,7 +57,7 @@ JSON Response:"""
         pass
 
     def _format_context(
-        self, documents: List[Dict], max_chars: int = rag_config.max_doc_content_length * 5
+        self, documents: List[Dict], max_chars: int = rag_config.max_doc_content_length * rag_config.max_cites
     ) -> str:
         """Format documents into context string.
 
