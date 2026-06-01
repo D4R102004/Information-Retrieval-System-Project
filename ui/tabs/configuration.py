@@ -5,9 +5,10 @@ from __future__ import annotations
 import gradio as gr
 
 from ..services.orchestrator_service import get_orchestrator_service
+from ..state import UIState
 
 
-def build_configuration_tab() -> None:
+def build_configuration_tab(app_state: gr.State) -> None:
     """Build configuration management interface."""
     orchestrator_service = get_orchestrator_service()
 
@@ -47,10 +48,29 @@ def build_configuration_tab() -> None:
                     info="Automatically execute crawlers if index is below minimum",
                 )
             save_query_btn = gr.Button("💾 Save Query Settings", variant="primary")
-            query_status = gr.Textbox(label="Status", interactive=False, visible=False)
+            query_status = gr.Textbox(label="Status", interactive=False, lines=1)
 
-            def save_query_settings(max_local, max_web, web_search, auto_reload_db):
-                return f"[OK] Settings updated: Local={max_local}, Web={max_web}, WebSearch={'on' if web_search else 'off'}, AutoReload={'on' if auto_reload_db else 'off'}"
+            def save_query_settings(
+                max_local: int,
+                max_web: int,
+                web_search: bool,
+                auto_reload_db: bool,
+                session_state: UIState,
+            ) -> tuple[str, UIState]:
+                """Persist query settings into session state for use by Search tab."""
+                session_state.settings = {
+                    "use_web_search": web_search,
+                    "auto_reload_empty": auto_reload_db,
+                    "max_local_results": max_local,
+                    "max_web_results": max_web,
+                }
+                status = (
+                    f"[OK] Settings saved — "
+                    f"Local={max_local}, Web={max_web}, "
+                    f"WebSearch={'on' if web_search else 'off'}, "
+                    f"AutoReload={'on' if auto_reload_db else 'off'}"
+                )
+                return status, session_state
 
             save_query_btn.click(
                 save_query_settings,
@@ -59,8 +79,9 @@ def build_configuration_tab() -> None:
                     max_web_results,
                     use_web_search,
                     auto_reload,
+                    app_state,
                 ],
-                outputs=query_status,
+                outputs=[query_status, app_state],
             )
 
         with gr.TabItem("RAG Configuration"):

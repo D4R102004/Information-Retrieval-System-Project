@@ -16,10 +16,10 @@ from .services.search_service import (
     map_progress_event,
 )
 from .state import UIState, create_default_state
-from .utils import validate_query
 from .tabs.configuration import build_configuration_tab
 from .tabs.evaluation import build_evaluation_tab
 from .tabs.status import build_status_tab
+from .utils import validate_query
 
 
 def _load_theme_css() -> str:
@@ -36,7 +36,9 @@ def _render_placeholder_results(state: UIState) -> tuple[str, str, str, str]:
         "This space will list documents, snippets, and metadata once retrieval is connected."
     )
     progress = "### Query progress\n\nNo query in progress."
-    rag_panel = "### RAG panel\n\nRAG output will appear here after retrieval completes."
+    rag_panel = (
+        "### RAG panel\n\nRAG output will appear here after retrieval completes."
+    )
     status_panel = format_search_status(
         {
             "minimum_documents": DEFAULT_MIN_DOCUMENTS,
@@ -51,7 +53,6 @@ def _render_placeholder_results(state: UIState) -> tuple[str, str, str, str]:
 
 def create_app() -> gr.Blocks:
     """Create the Gradio frontend shell."""
-    theme_css = _load_theme_css()
     state = create_default_state()
     orchestrator_service = get_orchestrator_service()
 
@@ -81,24 +82,6 @@ def create_app() -> gr.Blocks:
                             search_button = gr.Button("Search", variant="primary")
                             clear_button = gr.Button("Clear")
 
-                        with gr.Accordion("Search options", open=False):
-                            use_web_search = gr.Checkbox(value=True, label="Use web search")
-                            auto_reload = gr.Checkbox(value=True, label="Auto-reload database")
-                            max_local_results = gr.Slider(
-                                1,
-                                20,
-                                value=5,
-                                step=1,
-                                label="Max local results",
-                            )
-                            max_web_results = gr.Slider(
-                                0,
-                                20,
-                                value=10,
-                                step=1,
-                                label="Max web results",
-                            )
-
                         status_output = gr.Markdown(elem_classes=["ui-query-status"])
 
                     with gr.Column(scale=8, elem_classes=["ui-results-column"]):
@@ -107,19 +90,21 @@ def create_app() -> gr.Blocks:
                                 results_output = gr.Markdown()
                             with gr.Column(scale=4, elem_classes=["ui-rag-panel"]):
                                 rag_output = gr.Markdown()
-                        progress_output = gr.Markdown(elem_classes=["ui-progress-panel"])
+                        progress_output = gr.Markdown(
+                            elem_classes=["ui-progress-panel"]
+                        )
 
                 def run_search(
                     query: str,
-                    web_search_enabled: bool,
-                    auto_reload_enabled: bool,
-                    local_results: int,
-                    web_results: int,
                     session_state: UIState,
                 ):
-                    """Retrieve documents first and then generate the RAG response."""
+                    """Retrieve documents and generate RAG response using settings from state."""
                     progress_events: list[dict[str, str]] = []
 
+                    settings = session_state.settings
+                    web_search_enabled = settings.get("use_web_search", True)
+                    auto_reload_enabled = settings.get("auto_reload_empty", True)
+                    local_results = settings.get("max_local_results", 5)
                     is_valid, error_message = validate_query(query)
                     if not is_valid:
                         session_state.last_query = query or ""
@@ -142,14 +127,10 @@ def create_app() -> gr.Blocks:
                         return
 
                     session_state.last_query = query.strip()
-                    session_state.settings = {
-                        "use_web_search": web_search_enabled,
-                        "auto_reload_empty": auto_reload_enabled,
-                        "max_local_results": local_results,
-                        "max_web_results": web_results,
-                    }
                     retrieval_result: dict[str, object] = {}
-                    for retrieval_event in orchestrator_service.stream_retrieve_documents(
+                    for (
+                        retrieval_event
+                    ) in orchestrator_service.stream_retrieve_documents(
                         question=session_state.last_query,
                         max_local_results=local_results,
                         use_web_search=web_search_enabled,
@@ -163,7 +144,9 @@ def create_app() -> gr.Blocks:
                         if not progress_event:
                             continue
 
-                        if progress_events and progress_events[-1].get("stage") == progress_event.get("stage"):
+                        if progress_events and progress_events[-1].get(
+                            "stage"
+                        ) == progress_event.get("stage"):
                             progress_events[-1] = progress_event
                         else:
                             progress_events.append(progress_event)
@@ -172,7 +155,10 @@ def create_app() -> gr.Blocks:
                             "### Retrieval results\n\nCollecting documents...",
                             "### RAG panel\n\nWaiting for retrieval to finish.",
                             format_progress_panel(progress_events),
-                            format_search_status({"minimum_documents": DEFAULT_MIN_DOCUMENTS}, session_state.last_query),
+                            format_search_status(
+                                {"minimum_documents": DEFAULT_MIN_DOCUMENTS},
+                                session_state.last_query,
+                            ),
                             session_state,
                         )
 
@@ -191,7 +177,9 @@ def create_app() -> gr.Blocks:
                     if error_message:
                         session_state.retrieved_documents = []
                         session_state.rag_response = {}
-                        status_text = format_search_status(metadata, session_state.last_query)
+                        status_text = format_search_status(
+                            metadata, session_state.last_query
+                        )
                         progress_events.append(
                             {
                                 "stage": "retrieval_error",
@@ -212,7 +200,9 @@ def create_app() -> gr.Blocks:
                         doc for doc in documents if isinstance(doc, dict)
                     ]
                     results_text = format_search_results(documents, metadata)
-                    status_text = format_search_status(metadata, session_state.last_query)
+                    status_text = format_search_status(
+                        metadata, session_state.last_query
+                    )
 
                     loading_rag = (
                         "### RAG answer\n\n"
@@ -258,10 +248,14 @@ def create_app() -> gr.Blocks:
                         session_state,
                     )
 
-                def reset_search(session_state: UIState) -> tuple[str, str, str, str, str, UIState]:
+                def reset_search(
+                    session_state: UIState,
+                ) -> tuple[str, str, str, str, str, UIState]:
                     """Reset the search tab to its default empty state."""
                     default_state = create_default_state()
-                    results_text, progress_text, rag_text, status_text = _render_placeholder_results(default_state)
+                    results_text, progress_text, rag_text, status_text = (
+                        _render_placeholder_results(default_state)
+                    )
                     return (
                         "",
                         results_text,
@@ -273,30 +267,38 @@ def create_app() -> gr.Blocks:
 
                 search_button.click(
                     fn=run_search,
-                    inputs=[
-                        query_input,
-                        use_web_search,
-                        auto_reload,
-                        max_local_results,
-                        max_web_results,
+                    inputs=[query_input, app_state],
+                    outputs=[
+                        results_output,
+                        rag_output,
+                        progress_output,
+                        status_output,
                         app_state,
                     ],
-                    outputs=[results_output, rag_output, progress_output, status_output, app_state],
                 )
                 clear_button.click(
                     fn=reset_search,
                     inputs=[app_state],
-                    outputs=[query_input, results_output, progress_output, rag_output, status_output, app_state],
+                    outputs=[
+                        query_input,
+                        results_output,
+                        progress_output,
+                        rag_output,
+                        status_output,
+                        app_state,
+                    ],
                 )
 
-                default_results, default_progress, default_rag, default_status = _render_placeholder_results(state)
+                default_results, default_progress, default_rag, default_status = (
+                    _render_placeholder_results(state)
+                )
                 results_output.value = default_results
                 progress_output.value = default_progress
                 rag_output.value = default_rag
                 status_output.value = default_status
 
             with gr.Tab("Configuration"):
-                build_configuration_tab()
+                build_configuration_tab(app_state)
 
             with gr.Tab("Evaluation"):
                 build_evaluation_tab()
