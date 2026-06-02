@@ -9,7 +9,7 @@ Tests cover:
 """
 
 from src.rag.citations import CitationExtractor
-from src.rag.config import config as rag_config
+from src.rag.config import rag_config
 
 
 class TestCitationExtraction:

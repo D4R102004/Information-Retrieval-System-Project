@@ -21,12 +21,11 @@ from typing import List, Dict, Optional, Any
 
 from sri.pipeline import SRIPipeline
 from sri.crawler.caller import CrawlerCaller, clean_scraped_text
-from sri.crawler.settings import CrawlerSettings
-from main_config import MainConfig
+from main_config import main_config
 from rag.rag_module import RAGModule
 from rag.llm_provider import OllamaProvider # Change to desired LLM provider
 from rag.output_parser import RAGResponse
-from rag.config import config as rag_config
+from rag.config import rag_config
 from sri.web_search.checker import SufficiencyChecker
 from sri.web_search.searcher import WebSearcher
 
@@ -56,7 +55,7 @@ class MainOrchestator:
         self.sufficiency_checker = SufficiencyChecker()
         self.web_searcher = WebSearcher()
         self.crawler_caller = CrawlerCaller()
-        self.settings = MainConfig()
+        self.settings = main_config
         
         # Paths
         self.data_dir = Path(__file__).resolve().parent.parent / "data"
@@ -89,7 +88,7 @@ class MainOrchestator:
         self._log_step("clear_all_indices", "Starting complete database cleanup")
 
         if clear_raw is None:
-            clear_raw = self._get_setting("clear_raw")
+            clear_raw = self.get_setting("clear_raw")
         
         try:
             if clear_raw:
@@ -150,13 +149,15 @@ class MainOrchestator:
         start_time = time.time()
 
         if max_articles_per_spider is None:
-            max_articles_per_spider = self._get_setting("max_articles_per_spider")
+            max_articles_per_spider = self.get_setting("max_articles_per_spider")
+            logger.warning(f"max_articles_per_spider={max_articles_per_spider}")
 
         if force_recrawl is None:
-            force_recrawl = self._get_setting("force_recrawl")
+            force_recrawl = self.get_setting("force_recrawl")
+            logger.warning(f"force_recrawl={force_recrawl}")
 
         if use_initial_corpus is None:
-            use_initial_corpus = self._get_setting("use_initial_corpus")
+            use_initial_corpus = self.get_setting("use_initial_corpus")
 
         try:
             documents = []
@@ -347,10 +348,10 @@ class MainOrchestator:
         start_time = time.time()
 
         if use_initial_corpus is None:
-            use_initial_corpus = self._get_setting("use_initial_corpus")
+            use_initial_corpus = self.get_setting("use_initial_corpus")
         
         if auto_reload is None:
-            auto_reload = self._get_setting("auto_reload")
+            auto_reload = self.get_setting("auto_reload")
 
         try:
             if db_health is None:
@@ -593,19 +594,19 @@ class MainOrchestator:
         self._log_step("retrieve_documents", f"Retrieving documents for: {question}")
 
         if max_local_results is None:
-            max_local_results = self._get_setting("max_local_results")
+            max_local_results = self.get_setting("max_local_results")
 
         if max_web_results is None:
-            max_web_results = self._get_setting("max_web_results")
+            max_web_results = self.get_setting("max_web_results")
 
         if enable_web_search is None:
-            enable_web_search = self._get_setting("enable_web_search")
+            enable_web_search = self.get_setting("enable_web_search")
 
         if auto_reload is None:
-            auto_reload = self._get_setting("auto_reload")
+            auto_reload = self.get_setting("auto_reload")
 
         if use_initial_corpus is None:
-            use_initial_corpus = self._get_setting("use_initial_corpus")
+            use_initial_corpus = self.get_setting("use_initial_corpus")
 
         # Step 1: Check database health and ensure minimum documents before searching.
         db_health = self.check_database_health()
@@ -778,19 +779,19 @@ class MainOrchestator:
         }
 
         if max_local_results is None:
-            max_local_results = self._get_setting("max_local_results")
+            max_local_results = self.get_setting("max_local_results")
 
         if max_web_results is None:
-            max_web_results = self._get_setting("max_web_results")
+            max_web_results = self.get_setting("max_web_results")
 
         if enable_web_search is None:
-            enable_web_search = self._get_setting("enable_web_search")
+            enable_web_search = self.get_setting("enable_web_search")
 
         if auto_reload is None:
-            auto_reload = self._get_setting("auto_reload")
+            auto_reload = self.get_setting("auto_reload")
 
         if use_initial_corpus is None:
-            use_initial_corpus = self._get_setting("use_initial_corpus")
+            use_initial_corpus = self.get_setting("use_initial_corpus")
 
         try:
             self._log_step("query", f"Processing: {question}")
@@ -860,7 +861,7 @@ class MainOrchestator:
             List of ranked document results with scores
         """
         if max_results is None:
-            max_results = self._get_setting("max_local_results")        
+            max_results = self.get_setting("max_local_results")        
 
         try:
             results = self.pipeline.search(query, top_k=max_results)
@@ -986,7 +987,7 @@ class MainOrchestator:
     def _get_default(self, key: str) -> Any:
         return self.settings.default(key)
     
-    def _get_setting(self, key: str) -> Any:
+    def get_setting(self, key: str) -> Any:
         try:
             return self.settings[key]
         except Exception as e:
@@ -994,6 +995,22 @@ class MainOrchestator:
             default = self._get_default(key)
             logger.warning(f"Using default value: {key} = {default}")
             return default
+            
+    def sync_backend(self, state: dict[str, Any]):
+        """Attempts to sync settings with backend configuration
+
+        Args:
+            state (dict[str, Any]): current state
+
+        Returns:
+            bool: Syncronization performed correctly
+        """
+        try:
+            for key, val in state.items():
+                self.settings[key] = val
+            self._log_step("sync_backend", "Backend syncronization completed succesfully")
+        except Exception as e:
+            logger.error("Backend syncronization failed:", str(e))
 
     # ==================== EVALUATION ====================
 

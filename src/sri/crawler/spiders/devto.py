@@ -10,7 +10,7 @@ import uuid
 
 from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
-from sri.crawler.settings import CrawlerSettings
+from sri.crawler.settings import crawler_settings
 
 
 class DevToSpider(ApiSpider):
@@ -26,8 +26,8 @@ class DevToSpider(ApiSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
-        per_page: int = CrawlerSettings()["PER_PAGE"],
+        max_articles: int = crawler_settings["MAX_ARTICLES_PER_SPIDER"],
+        per_page: int = crawler_settings["PER_PAGE"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -37,7 +37,7 @@ class DevToSpider(ApiSpider):
         """
         super().__init__(max_articles=max_articles)
 
-        self.per_page = min(per_page, CrawlerSettings()["PER_PAGE"])
+        self.per_page = min(per_page, crawler_settings["PER_PAGE"])
 
     def _fetch_page(self, tag: str, page: int) -> list[dict]:
         """Fetch a single page of articles from the Dev.to API.
@@ -50,7 +50,7 @@ class DevToSpider(ApiSpider):
             List of raw article dicts from the API, or empty list on error.
         """
 
-        url = CrawlerSettings()["DEVTO_API_URL"]
+        url = crawler_settings["DEVTO_API_URL"]
 
         params = {
             "tag": tag,
@@ -79,7 +79,7 @@ class DevToSpider(ApiSpider):
             Full article dict from the API, or empty dict on error.
         """
 
-        url = f"{CrawlerSettings()["DEVTO_API_URL"]}/{article_id}"
+        url = f"{crawler_settings["DEVTO_API_URL"]}/{article_id}"
 
         result = self._get_json(url)
 
@@ -126,4 +126,4 @@ class DevToSpider(ApiSpider):
             List of topic tags to search for articles.
         """
 
-        return CrawlerSettings()["DEVTO_TAGS"]
+        return crawler_settings["DEVTO_TAGS"]

@@ -21,6 +21,10 @@ from sklearn.preprocessing import normalize
 from scipy.spatial.distance import cosine
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 class LSIModel:
     """
     Modelo de Indexación Semántica Latente (LSI / LSA).
@@ -85,7 +89,7 @@ class LSIModel:
         self.is_fitted = True
 
         explained = self.svd.explained_variance_ratio_.sum()
-        print(f"[LSI] Índice construido: {len(documents)} docs, "
+        logger.debug(f"[LSI] Índice construido: {len(documents)} docs, "
               f"k={k}, varianza explicada={explained:.2%}")
 
     # ------------------------------------------------------------------
@@ -156,7 +160,7 @@ class LSIModel:
                 "documents":    self.documents,
                 "n_components": self.n_components,
             }, f)
-        print(f"[LSI] Modelo guardado en {path}")
+        logger.debug(f"[LSI] Modelo guardado en {path}")
 
     def load(self, path: str) -> None:
         """Carga el modelo desde disco."""
@@ -168,7 +172,7 @@ class LSIModel:
         self.documents    = data["documents"]
         self.n_components = data["n_components"]
         self.is_fitted    = True
-        print(f"[LSI] Modelo cargado: {len(self.documents)} documentos.")
+        logger.debug(f"[LSI] Modelo cargado: {len(self.documents)} documentos.")
 
     # ------------------------------------------------------------------
     # Utilidades internas

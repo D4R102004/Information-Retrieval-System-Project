@@ -9,7 +9,7 @@ import re
 from typing import List, Dict, Optional, Tuple
 from pydantic import BaseModel, Field, ConfigDict
 import logging
-from .config import config as rag_config
+from .config import rag_config
 
 logger = logging.getLogger(__name__)
 

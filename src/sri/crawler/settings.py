@@ -15,47 +15,50 @@ class CrawlerSettings:
         return cls._instance
 
     def __init__(self) -> None:
-        # private dictionary with all settings
-        self._default: dict[str, Any] = {
-            # http
-            "http_timeout": 10.0,
-            "http_scrape_timeout": 30.0,  # for heavy HTML pages
+        if not hasattr(self, "_instanced"):
+            # private dictionary with all settings
+            self._default: dict[str, Any] = {
+                # http
+                "http_timeout": 10.0,
+                "http_scrape_timeout": 30.0,  # for heavy HTML pages
 
-            # fetch limits
-            "max_articles_per_spider": 500,
-            "per_page": 100,
+                # fetch limits
+                "max_articles_per_spider": 500,
+                "per_page": 100,
 
-            # dev.to
-            "devto_api_url": "https://dev.to/api/articles",
-            "devto_tags": ["python", "software", "programming", "webdev", "javascript"],
+                # dev.to
+                "devto_api_url": "https://dev.to/api/articles",
+                "devto_tags": ["python", "software", "programming", "webdev", "javascript"],
 
-            # hacker news
-            "hn_api_url": "https://hn.algolia.com/api/v1/search",
-            "hn_search_terms": ["software", "python", "programming", "webdev", "javascript"],
+                # hacker news
+                "hn_api_url": "https://hn.algolia.com/api/v1/search",
+                "hn_search_terms": ["software", "python", "programming", "webdev", "javascript"],
 
-            # lobsters
-            "lobsters_base_url": "https://lobste.rs",
+                # lobsters
+                "lobsters_base_url": "https://lobste.rs",
 
-            # realpython
-            "realpython_base_url": "https://realpython.com",
-            "realpython_sitemap_url": "https://realpython.com/sitemap.xml",
+                # realpython
+                "realpython_base_url": "https://realpython.com",
+                "realpython_sitemap_url": "https://realpython.com/sitemap.xml",
 
-            # rss feeds
-            "the_new_stack_feed": "https://thenewstack.io/feed/",
-            "the_verge_feed": "https://www.theverge.com/rss/index.xml",
+                # rss feeds
+                "the_new_stack_feed": "https://thenewstack.io/feed/",
+                "the_verge_feed": "https://www.theverge.com/rss/index.xml",
 
-            # database sufficiency thresholds
-            "min_documents_threshold": 1000,  # minimum docs for "sufficient" database
-            "min_avg_score_threshold": 0.5,   # minimum average score for results
-            "min_results_for_query": 3,       # minimum results before web search
-            # TODO: assess using fraction of max documents instead of fixed number
+                # database sufficiency thresholds
+                "min_documents_threshold": 1000,  # minimum docs for "sufficient" database
+                "min_avg_score_threshold": 0.5,   # minimum average score for results
+                "min_results_for_query": 3,       # minimum results before web search
+                # TODO: assess using fraction of max documents instead of fixed number
 
-            # auto-reload behavior
-            "auto_reload": True,        # execute crawlers if DB insufficient
-        }
+                # auto-reload behavior
+                "auto_reload": True,        # execute crawlers if DB insufficient
+            }
 
-        # mutable copy of default
-        self._settings: dict[str, Any] = dict(self._default)
+            # mutable copy of default
+            self._settings: dict[str, Any] = dict(self._default)
+
+            self._instanced = True
 
     def __getitem__(self, key: str) -> Any:
         """Return the value of a key if it exists."""
@@ -71,7 +74,7 @@ class CrawlerSettings:
         """
         key = key.lower()
 
-        if not hasattr(self, key):
+        if not self.has(key):
             raise KeyError(f"Key '{key}' not found in CrawlerConfig")
         
         current_value = self[key]
@@ -81,6 +84,10 @@ class CrawlerSettings:
             raise TypeError(
             f"Type mismatch for '{key}': expected {type(current_value).__name__}, got {type(value).__name__}"
         )
+
+    def has(self, key: str) -> bool:
+        """Returns True if settings has key"""
+        return key.lower() in self._settings.keys()
 
     def all(self) -> dict[str, Any]:
         """Return a copy of all settings."""
@@ -92,3 +99,6 @@ class CrawlerSettings:
         if key in self._default:
             return self._default[key]
         raise KeyError(f"Default value for '{key}' not found")
+    
+# Global singleton instance
+crawler_settings = CrawlerSettings()

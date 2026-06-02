@@ -5,7 +5,6 @@ Centralizes all RAG configuration parameters.
 Supports environment variables for production deployment.
 """
 
-from pydantic import ConfigDict
 from typing import Any, Literal
 import logging
 
@@ -61,14 +60,14 @@ class RAGConfig:
     def __getitem__(self, key: str) -> Any:
         """Allow dict-like access to attributes."""
         key = key.lower()
-        if not hasattr(self, key):
+        if not self.has(key):
             raise KeyError(f"Key '{key}' not found in RAGConfig")
         return getattr(self, key)
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Allow dict-like assignment with type checking."""
         key = key.lower()
-        if not hasattr(self, key):
+        if not self.has(key):
             raise KeyError(f"Key '{key}' not found in RAGConfig")
 
         current_value = getattr(self, key)
@@ -81,12 +80,23 @@ class RAGConfig:
                 f"Type mismatch for '{key}': expected {type(current_value).__name__}, got {type(value).__name__}"
             )
         
+    def has(self, key: str) -> bool:
+        """Returns True if settings has key"""
+        return hasattr(self, key)
+        
     def default(self, key: str) -> Any:
         """Return the default value for a given key."""
         key = key.lower()
         if key in self._default:
             return self._default[key]
         raise KeyError(f"Default value for '{key}' not found")
+    
+    def all(self) -> dict[str, Any]:
+        """Return a merged dict of all settings."""
+        return {
+                    k: v for k, v in self.__dict__.items()
+                    if not k.startswith("_")
+                }
 
 # Global singleton instance
-config = RAGConfig()
+rag_config = RAGConfig()

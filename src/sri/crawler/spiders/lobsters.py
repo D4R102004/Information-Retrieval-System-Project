@@ -15,7 +15,11 @@ from bs4 import BeautifulSoup
 # Local
 from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
-from sri.crawler.settings import CrawlerSettings
+from sri.crawler.settings import crawler_settings
+
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class LobstersSpider(ApiSpider):
@@ -30,7 +34,7 @@ class LobstersSpider(ApiSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
+        max_articles: int = crawler_settings["MAX_ARTICLES_PER_SPIDER"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -68,9 +72,9 @@ class LobstersSpider(ApiSpider):
         """
 
         if page == 1:
-            url = f"{CrawlerSettings()["LOBSTERS_BASE_URL"]}" "/hottest.json"
+            url = f"{crawler_settings["LOBSTERS_BASE_URL"]}" "/hottest.json"
         else:
-            url = f"{CrawlerSettings()["LOBSTERS_BASE_URL"]}" f"/hottest/page/{page}.json"
+            url = f"{crawler_settings["LOBSTERS_BASE_URL"]}" f"/hottest/page/{page}.json"
 
         result = self._get_json(url)
 
@@ -113,7 +117,7 @@ class LobstersSpider(ApiSpider):
             article["content"] = " ".join(p.get_text(strip=True) for p in paragraphs)
 
         except Exception as error:
-            print(f"[LobstersSpider] Failed to scrape " f"{article['url']}: {error}")
+            logger.debug(f"[LobstersSpider] Failed to scrape " f"{article['url']}: {error}")
             return None
 
         return article
