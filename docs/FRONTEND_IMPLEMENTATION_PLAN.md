@@ -122,7 +122,7 @@ def search_tab():
     
     with gr.Group(elem_classes="search-options", visible=False) as options_group:
         options_visible = gr.Checkbox(label="Show Options", value=False)
-        use_web_search = gr.Checkbox(label="Use Web Search", value=True)
+        enable_web_search = gr.Checkbox(label="Use Web Search", value=True)
         auto_reload = gr.Checkbox(label="Auto-reload Database", value=True)
         max_local = gr.Slider(1, 20, value=5, label="Max Local Results")
         max_web = gr.Slider(0, 20, value=10, label="Max Web Results")
@@ -1036,8 +1036,8 @@ with gr.Group(label="Crawler State"):
 
 | Frontend Feature | Backend Method | Parameters | Returns |
 |------------------|-----------------|-----------|---------|
-| Search query execution | `query()` | query, max_local_results, use_web_search, auto_reload_empty | RAGResponse |
-| Retrieve documents | `retrieve_documents()` | question, max_local_results, use_web_search, auto_reload_empty | Dict with documents & metadata |
+| Search query execution | `query()` | query, max_local_results, enable_web_search, auto_reload | RAGResponse |
+| Retrieve documents | `retrieve_documents()` | question, max_local_results, enable_web_search, auto_reload | Dict with documents & metadata |
 | Clear database | `clear_all_indices()` | - | Dict with success status |
 | Load/reload database | `load_documents_from_crawlers()` | max_articles, force_recrawl | Dict with load statistics |
 | Database health | `check_database_health()` | - | Dict with health metrics |
@@ -1066,8 +1066,8 @@ def execute_search(query, max_local, use_web, auto_reload):
     retrieval_result = orchestrator.retrieve_documents(
         question=query,
         max_local_results=max_local,
-        use_web_search=use_web,
-        auto_reload_empty=auto_reload
+        enable_web_search=use_web,
+        auto_reload=auto_reload
     )
     
     documents = retrieval_result['documents']
@@ -1376,8 +1376,8 @@ services:
 |-----------|-------|---------|-------------|
 | max_local_results | 1-20 | 5 | Maximum local search results to use |
 | max_web_results | 0-20 | 10 | Maximum web search results |
-| use_web_search | boolean | true | Enable web augmentation |
-| auto_reload_empty | boolean | true | Auto-load data if DB empty |
+| enable_web_search | boolean | true | Enable web augmentation |
+| auto_reload | boolean | true | Auto-load data if DB empty |
 
 ### RAG Configuration
 | Parameter | Range | Default | Description |

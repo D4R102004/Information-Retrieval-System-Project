@@ -30,7 +30,7 @@ class LobstersSpider(ApiSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -68,9 +68,9 @@ class LobstersSpider(ApiSpider):
         """
 
         if page == 1:
-            url = f"{CrawlerSettings.LOBSTERS_BASE_URL}" "/hottest.json"
+            url = f"{CrawlerSettings()["LOBSTERS_BASE_URL"]}" "/hottest.json"
         else:
-            url = f"{CrawlerSettings.LOBSTERS_BASE_URL}" f"/hottest/page/{page}.json"
+            url = f"{CrawlerSettings()["LOBSTERS_BASE_URL"]}" f"/hottest/page/{page}.json"
 
         result = self._get_json(url)
 

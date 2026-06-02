@@ -102,8 +102,8 @@ def create_app() -> gr.Blocks:
                     progress_events: list[dict[str, str]] = []
 
                     settings = session_state.settings
-                    web_search_enabled = settings.get("use_web_search", True)
-                    auto_reload_enabled = settings.get("auto_reload_empty", True)
+                    web_search_enabled = settings.get("enable_web_search", True)
+                    auto_reload_enabled = settings.get("auto_reload", True)
                     local_results = settings.get("max_local_results", 5)
                     is_valid, error_message = validate_query(query)
                     if not is_valid:
@@ -133,8 +133,8 @@ def create_app() -> gr.Blocks:
                     ) in orchestrator_service.stream_retrieve_documents(
                         question=session_state.last_query,
                         max_local_results=local_results,
-                        use_web_search=web_search_enabled,
-                        auto_reload_empty=auto_reload_enabled,
+                        enable_web_search=web_search_enabled,
+                        auto_reload=auto_reload_enabled,
                     ):
                         if retrieval_event.get("kind") == "result":
                             retrieval_result = retrieval_event.get("payload", {}) or {}

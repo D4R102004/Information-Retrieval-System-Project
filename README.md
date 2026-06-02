@@ -207,7 +207,7 @@ RAGResponse (answer + citations)
 
 | Method | Purpose | Parameters | Returns |
 |--------|---------|-----------|---------|
-| `query()` | Complete end-to-end query pipeline | `question, max_local_results, use_web_search, auto_reload_empty` | `RAGResponse` |
+| `query()` | Complete end-to-end query pipeline | `question, max_local_results, enable_web_search, auto_reload` | `RAGResponse` |
 | `retrieve_documents()` | Document retrieval without RAG | Same as `query()` | `Dict[str, Any]` with documents |
 | `augment_response()` | RAG generation from documents | `question, documents` | `RAGResponse` |
 | `clear_all_indices()` | Clear database | None | `Dict[str, Any]` status |
@@ -545,8 +545,8 @@ orchestrator = MainOrchestrator()
 response = orchestrator.query(
     question="What is Retrieval-Augmented Generation?",
     max_local_results=5,
-    use_web_search=True,
-    auto_reload_empty=True
+    enable_web_search=True,
+    auto_reload=True
 )
 
 print(f"Answer: {response.answer}")
@@ -563,8 +563,8 @@ print(f"Metadata: {response.metadata}")
 result = orchestrator.retrieve_documents(
     question="machine learning frameworks",
     max_local_results=10,
-    use_web_search=True,
-    auto_reload_empty=False
+    enable_web_search=True,
+    auto_reload=False
 )
 
 documents = result['documents']
@@ -606,7 +606,7 @@ for citation in response.citations:
 retrieval = orchestrator.retrieve_documents(
     question="query",
     max_local_results=3,
-    use_web_search=False  # Don't use web search in this step
+    enable_web_search=False  # Don't use web search in this step
 )
 
 # Step 2: Check insufficiency
@@ -879,7 +879,7 @@ orchestrator.load_documents_from_crawlers()
 python src/main.py --status
 ```
 
-Ensure `Indexed Documents` ≥ 500 (configurable `MIN_DB_DOCUMENTS`).
+Ensure `Indexed Documents` ≥ 500 (configurable `self.settings["min_documents"]`).
 
 #### 2. Ollama Connection Failed
 

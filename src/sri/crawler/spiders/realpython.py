@@ -36,10 +36,10 @@ class RealPythonSpider(BaseSpider):
             max_articles: Maximum number of articles to fetch.
         """
         super().__init__(max_articles)
-        self._client = httpx.Client(timeout=CrawlerSettings.HTTP_SCRAPE_TIMEOUT)
+        self._client = httpx.Client(timeout=CrawlerSettings()["HTTP_SCRAPE_TIMEOUT"])
 
-        self._base_url = CrawlerSettings.REALPYTHON_BASE_URL
-        self._sitemap_url = CrawlerSettings.REALPYTHON_SITEMAP_URL
+        self._base_url = CrawlerSettings()["REALPYTHON_BASE_URL"]
+        self._sitemap_url = CrawlerSettings()["REALPYTHON_SITEMAP_URL"]
 
     def fetch_articles(self) -> list[ArticleItem]:
         """Fetch articles from Real Python sitemap and scrape content."""

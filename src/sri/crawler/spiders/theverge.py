@@ -35,7 +35,7 @@ class TheVergeSpider(BaseSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings.MAX_ARTICLES,
+        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -45,7 +45,7 @@ class TheVergeSpider(BaseSpider):
         super().__init__(max_articles)
 
         self._client = httpx.Client(
-            timeout=CrawlerSettings.HTTP_TIMEOUT,
+            timeout=CrawlerSettings()["HTTP_TIMEOUT"],
         )
 
     def fetch_articles(self) -> list[ArticleItem]:
@@ -71,7 +71,7 @@ class TheVergeSpider(BaseSpider):
         collected: list[ArticleItem] = []
 
         response = self._client.get(
-            CrawlerSettings.THE_VERGE_FEED,
+            CrawlerSettings()["THE_VERGE_FEED"],
         )
 
         soup = BeautifulSoup(response.text, "xml")

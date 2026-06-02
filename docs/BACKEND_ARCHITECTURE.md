@@ -90,11 +90,11 @@ def check_database_health(self) -> Dict[str, Any]:
 ```
 [Empty DB]
     ↓
-[User calls auto_reload_empty=True]
+[User calls auto_reload=True]
     ↓
 [Attempts: consolidated file → raw consolidation → crawlers]
     ↓
-[Success: MIN_DB_DOCUMENTS indexed] OR [Failure]
+[Success: self.settings["min_documents"] indexed] OR [Failure]
 ```
 
 #### Section 2: Insufficiency Detection
@@ -145,8 +145,8 @@ def retrieve_documents(
     self,
     question: str,
     max_local_results: int = 5,
-    use_web_search: bool = True,
-    auto_reload_empty: bool = True
+    enable_web_search: bool = True,
+    auto_reload: bool = True
 ) -> Dict[str, Any]:
     """Document retrieval without RAG generation."""
 
@@ -161,8 +161,8 @@ def query(
     self,
     question: str,
     max_local_results: int = 5,
-    use_web_search: bool = True,
-    auto_reload_empty: bool = True
+    enable_web_search: bool = True,
+    auto_reload: bool = True
 ) -> RAGResponse:
     """Complete end-to-end query pipeline."""
 ```
@@ -320,7 +320,7 @@ response = self.rag_module.generate(
 
 **Trigger Condition:**
 ```
-if use_web_search and insufficiency['is_insufficient']:
+if enable_web_search and insufficiency['is_insufficient']:
     web_results = self._search_web(question)
 ```
 
@@ -378,7 +378,7 @@ Step 3: Insufficiency Detection
   └─ Emit: is_insufficient, reasons
   ↓
 Step 4: Conditional Web Search
-  if use_web_search AND is_insufficient:
+  if enable_web_search AND is_insufficient:
     ├─ Search DuckDuckGo
     ├─ Clean scraped results
     ├─ Persist to documents.json
@@ -863,7 +863,7 @@ if not load_result['success']:
 ```python
 local_results = self._search_locally(question)
 if not local_results:
-    if use_web_search:
+    if enable_web_search:
         # Fall back to web search
         web_results = self._search_web(question)
     else:

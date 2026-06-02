@@ -193,7 +193,7 @@ print([c.title for c in response.citations])
 result = orchestrator.retrieve_documents(
     question="Your question",
     max_local_results=10,
-    use_web_search=True
+    enable_web_search=True
 )
 
 documents = result['documents']
@@ -455,7 +455,7 @@ class MySpider(scrapy.Spider):
 orchestrator.query(question, max_local_results=3)
 
 # 2. Disable web search if not needed
-orchestrator.query(question, use_web_search=False)
+orchestrator.query(question, enable_web_search=False)
 
 # 3. Use smaller LLM model
 config.ollama_model = "mistral"
