@@ -3,7 +3,7 @@
 https://github.com/D4R102004/Information-Retrieval-System-Project
 
 # Integrantes (Nombre completo, Grupo, Carrera)
-Darío Fancisco Alfonso Urrutia - 311 - Computación
+Darío Francisco Alfonso Urrutia - 311 - Computación
 Juan Carlos Carmenate Díaz - 311 - Computación
 Sebastian González Alfonso - 312 - Computación
 
@@ -14,11 +14,4 @@ Q: Consultas en ingles en lenguaje natural del usuario sobre tecnología y softw
 
 F: Sistema de recuperación que combina índice invertido con pesos TF-IDF, un modelo LSI que usa TF-IDF + TruncatedSVD con k=100, y un vector store con ChromaDB si está disponible; si no, usa un backend local basado en TF-IDF reducido a modo de fallback.
 
-R(q,d): Función de ranking multi-señal:
-   score(q,d) =
-      0.55 · s_LSI
-    + 0.25 · s_vector
-    + 0.10 · s_frescura
-    + 0.10 · s_popularidad
-
-   Luego el score se multiplica por un pequeño boost según el tipo de contenido.
+R(q,d): Función de ranking multi-señal: score(q,d) = 0.55 * s_LSI + 0.25 * s_vector + 0.10 * s_frescura + 0.10 * s_popularidad. Luego el score se multiplica por un pequeño boost según el tipo de contenido.
