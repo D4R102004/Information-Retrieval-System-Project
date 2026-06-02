@@ -32,7 +32,7 @@ from main_config import MainConfig
 from rag.rag_module import RAGModule
 from rag.llm_provider import OllamaProvider # Change to desired LLM provider
 from rag.output_parser import RAGResponse
-from rag.config import config as rag_config
+from rag.config import rag_config
 from sri.web_search.checker import SufficiencyChecker
 try:
     from sri.web_search.searcher import WebSearcher
