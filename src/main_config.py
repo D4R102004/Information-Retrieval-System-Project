@@ -2,8 +2,8 @@
     Main configuration file
 """
 from typing import Any
-from sri.crawler.settings import CrawlerSettings
-from rag.config import RAGConfig
+from sri.crawler.settings import crawler_settings
+from rag.config import rag_config
 
 class MainConfig:
     """
@@ -21,16 +21,14 @@ class MainConfig:
     def __init__(self) -> None:
         if not hasattr(self, "_initialized"):
             # singleton sub-configs
-            self._crawler_config = CrawlerSettings()
-            self._rag_config = RAGConfig()
+            self._crawler_config = crawler_settings
+            self._rag_config = rag_config
 
             # extra fields not present in crawler or rag
             self._default: dict[str, Any] = {
                 "max_local_results": 5,
                 "max_web_results": 10,
                 "min_documents": 500, # Minimum documents in DB for local search to be considered sufficient
-                "min_results_for_query": 3, # Minimum local results before web augmentation
-                "min_avg_score_threshold": 0.3, # Minimum average retrieval score before web augmentation
                 "enable_web_search": True,
                 "auto_reload": True,
                 "query_min_length": 3,
@@ -51,18 +49,17 @@ class MainConfig:
         if key in self._settings:
             return self._settings[key]
         
-        # delegate to crawler or rag configs
-        try:
+        # delegate to crawler config
+        elif self._crawler_config.has(key):
             return self._crawler_config[key]
-        except Exception as e:
-            pass
+        
+        # delegate to rag config
+        elif self._rag_config.has(key):
 
-        try:
             return self._rag_config[key]
-        except Exception as e:
-            pass
-
-        raise KeyError(f"Key '{key}' not found in MainConfig")
+        
+        else:
+            raise KeyError(f"Key '{key}' not found in MainConfig")
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Dict-like assignment with type checking."""
@@ -75,33 +72,30 @@ class MainConfig:
                 raise TypeError(
                     f"Type mismatch for '{key}': expected {type(current_value).__name__}, got {type(value).__name__}"
                 )
-            return
         
-        # delegate to crawler or rag config
-        try:
+        # delegate to crawler config
+        elif self._crawler_config.has(key):
             self._crawler_config[key] = value
-            return
-        except KeyError as e:
-            pass
-        except TypeError as e:
-            raise e
 
-        try:
+        # delegate to rag config
+        elif self._rag_config.has(key):
             self._rag_config[key] = value
-            return
-        except KeyError as e:
-            pass
-        except TypeError as e:
-            raise e
+
+        else:
+            raise KeyError(f"Key '{key}' not found in MainConfig")
         
-        raise KeyError(f"Key '{key}' not found in MainConfig")
+    def has(self, key: str) -> bool:
+        """Returns True if settings has key"""
+        return (key in self._settings.keys() or 
+               self._crawler_config.has(key) or 
+               self._rag_config.has(key))
 
     def all(self) -> dict[str, Any]:
         """Return a merged dict of all settings."""
         merged = dict(self._settings)
         # merge crawler and rag configs
         merged.update(self._crawler_config.all())
-        merged.update(self._rag_config.dict())
+        merged.update(self._rag_config.all())
         return merged
     
     def default(self, key: str) -> Any:
@@ -109,10 +103,13 @@ class MainConfig:
         key = key.lower()
         if key in self._default:
             return self._default[key]
-        
-        try:
-            return self._crawler_config.default(key)
-        except KeyError:
-            pass
+        elif self._crawler_config.has(key):
 
-        return self._rag_config.default(key)
+            return self._crawler_config.default(key)
+        elif self._rag_config.has(key):
+            return self._rag_config.default(key)
+        else:
+            raise KeyError(f"Key '{key}' not found in MainConfig")
+
+# Global singleton instance
+main_config = MainConfig()

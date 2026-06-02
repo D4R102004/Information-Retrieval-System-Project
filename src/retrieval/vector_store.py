@@ -358,13 +358,13 @@ class VectorStore:
         emb_path = os.path.join(self.persist_dir,
                                 f"{self.collection_name}_embedder.pkl")
         self.embedder.save(emb_path)
-        print(f"[VectorDB] Store guardado: {store_path}")
+        logger.info(f"[VectorDB] Store guardado: {store_path}")
 
     def load(self) -> None:
         """Carga el vector store desde disco."""
         store_path = os.path.join(self.persist_dir, f"{self.collection_name}.json")
         if not os.path.exists(store_path):
-            print("[VectorDB] No existe store previo. Comenzando vacío.")
+            logger.info("[VectorDB] No existe store previo. Comenzando vacío.")
             return
 
         with open(store_path, "r", encoding="utf-8") as f:
@@ -380,7 +380,7 @@ class VectorStore:
         if os.path.exists(emb_path):
             self.embedder.load(emb_path)
 
-        print(f"[VectorDB] Store cargado: {self.count()} documentos.")
+        logger.info(f"[VectorDB] Store cargado: {self.count()} documentos.")
 
     # ------------------------------------------------------------------
     # Utilidades

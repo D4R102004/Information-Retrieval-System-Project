@@ -28,11 +28,10 @@ except ImportError as crawler_import_error:  # Crawler deps are optional for rec
     def clean_scraped_text(value: str) -> str:
         return value
 
-from main_config import MainConfig
+from main_config import main_config
 from rag.rag_module import RAGModule
 from rag.llm_provider import OllamaProvider # Change to desired LLM provider
 from rag.output_parser import RAGResponse
-from rag.config import rag_config
 from sri.web_search.checker import SufficiencyChecker
 try:
     from sri.web_search.searcher import WebSearcher
@@ -69,7 +68,7 @@ class MainOrchestator:
         self.sufficiency_checker = SufficiencyChecker()
         self.web_searcher = WebSearcher() if WebSearcher is not None else None
         self.crawler_caller = CrawlerCaller() if CrawlerCaller is not None else None
-        self.settings = MainConfig()
+        self.settings = main_config
         
         # Paths
         self.data_dir = Path(__file__).resolve().parent.parent / "data"
@@ -196,11 +195,9 @@ class MainOrchestator:
 
         if max_articles_per_spider is None:
             max_articles_per_spider = self.get_setting("max_articles_per_spider")
-            logger.warning(f"max_articles_per_spider={max_articles_per_spider}")
 
         if force_recrawl is None:
             force_recrawl = self.get_setting("force_recrawl")
-            logger.warning(f"force_recrawl={force_recrawl}")
 
         if use_initial_corpus is None:
             use_initial_corpus = self.get_setting("use_initial_corpus")
@@ -511,7 +508,7 @@ class MainOrchestator:
             return True  # Can't meaningfully check
 
         overlap_count = 0
-        for doc in documents[:rag_config.max_cites]:  # Check first max_cites docs
+        for doc in documents[:self.settings["max_cites"]]:  # Check first max_cites docs
             doc_text = self._extract_content(doc).lower()
             doc_words = set(doc_text.split())
             overlap = len(query_words & doc_words)
