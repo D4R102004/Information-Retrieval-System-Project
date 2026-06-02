@@ -53,10 +53,13 @@ La interfaz Gradio se abrirá en `http://localhost:7860`
 
 **Narración:**
 
-> "El sistema comienza con un corpus inicial de **1,405 documentos** recolectados por crawlers especializados:
-> - **1,205 artículos** de Dev.to (comunidad técnica verificada)
-> - **200 artículos** de HackerNews (curación comunitaria)
->
+> "El sistema comienza con un corpus inicial de **1,425 documentos** recolectados por crawlers especializados:
+> - **645 artículos** de Dev.to
+> - **10 artículos** de HackerNews
+> - **19 artículos** de Lobsters
+> - **725 artículos** de RealPython
+> - **26 artículos** de TheNewStack
+
 > Cada documento contiene 7 campos estructurados:
 > - ID (UUID único)
 > - Título
@@ -64,39 +67,22 @@ La interfaz Gradio se abrirá en `http://localhost:7860`
 > - Fecha de publicación
 > - Contenido completo
 > - Fuente de origen
-> - Etiquetas temáticas"
+> - Etiquetas temáticas
 
 **Tiempo:** 0:30
 
 ### Paso 2: Iniciar la Indexación
 
-**Acción:** 
-1. En la UI, ir a tab "Configuration"
-2. Hacer clic en botón "Load Documents from Crawlers"
-3. Seleccionar "Force re-index corpus" (checkbox)
-
 **Mostrar progreso en vivo:**
-
-```
-Indexing Status:
-├─ Loaded documents: 1,405 / 1,405 ✓
-├─ LSI model training...
-│  └─ TF-IDF vectorization (1,405 docs × 20,000 terms)
-│  └─ Truncated SVD (k=100 latent dimensions) 45%
-├─ Vector embeddings generation...
-│  └─ all-MiniLM-L6-v2 (384 dimensions) 67%
-└─ Index serialization: Complete
-```
 
 **Narración mientras carga:**
 
 > "El sistema ejecuta un pipeline de 4 pasos simultáneamente:
 >
 > **1. LSI (Latent Semantic Indexing):** 
->    Descubre relaciones semánticas latentes mediante SVD truncado sobre la matriz TF-IDF. Con 100 dimensiones latentes, el sistema agrupa documentos que hablan del mismo tema con vocabulario diferente. Por ejemplo, 'machine learning' y 'deep learning' ocuparán posiciones cercanas en el espacio latente.
+>    Descubre relaciones semánticas latentes mediante SVD truncado sobre la matriz TF-IDF. Con dimensiones latentes, el sistema agrupa documentos que hablan del mismo tema con vocabulario diferente. Por ejemplo, 'machine learning' y 'deep learning' ocuparán posiciones cercanas en el espacio latente.
 >
 > **2. Vectorización con Embeddings:**
->    Cada documento se convierte en un vector de 384 dimensiones usando all-MiniLM-L6-v2. Este modelo es eficiente (22 MB), local (sin APIs externas) y multilingüe (soporta 100+ idiomas).
 >
 > **3. Índice Invertido:**
 >    Se construye una estructura term → {doc_id → {tf, tfidf, positions}} para búsqueda rápida por keywords.
@@ -154,9 +140,9 @@ Retrieval Results (10 documentos):
 >
 > El sistema ejecuta dos búsquedas en paralelo:
 >
-> **1. LSI Search (45ms):** Proyecta la query al espacio latente de 100 dimensiones y calcula similitud coseno con todos los documentos. Detecta que la query está semánticamente relacionada con documentos sobre 'containerization', 'images', 'volumes', etc.
+> **1. LSI Search (45ms):** Proyecta la query al espacio latente y calcula similitud coseno con todos los documentos. Detecta que la query está semánticamente relacionada con documentos sobre 'containerization', 'images', 'volumes', etc.
 >
-> **2. Vector Search (82ms):** Convierte la query en un embedding de 384 dimensiones y busca los vectores más cercanos usando similitud coseno. Utiliza BLAS operations para paralelizar el cálculo (1×384) · (384×1405).
+> **2. Vector Search (82ms):** Convierte la query en un embedding de 384 dimensiones y busca los vectores más cercanos usando similitud coseno. Utiliza operations para paralelizar el cálculo.
 >
 > **3. Ranking Multi-Señal:** Fusiona los dos scores con la fórmula:
 >    final_score = 0.55 × LSI_score + 0.25 × vector_score + 
@@ -168,8 +154,8 @@ Retrieval Results (10 documentos):
 > - Documentos votados positivamente en Dev.to reciben boost de popularidad
 >
 > El sistema evalúa la **suficiencia** con dos criterios:
-> - **Cantidad:** ¿Hay al menos 3 documentos? ✓ (tenemos 10)
-> - **Calidad:** ¿El mejor score es ≥ 0.55? ✓ (tenemos 0.68)
+> - **Cantidad:** Se cumple la cuota de documentos?
+> - **Calidad:** La puntuacion promedio es lo suficinetemente buena y hay coincidencias semanticas?
 >
 > Como ambos criterios pasan, se omite web search y se genera la respuesta con documentos locales."
 
@@ -221,7 +207,7 @@ VMs [doc_2] and improved consistency across environments [doc_3].
 >
 > **Mecanismos anti-alucinación implementados:**
 >
-> 1. **Context Window Limitado:** Solo ve 4,000 caracteres de documentos, no su entrenamiento general
+> 1. **Context Window Limitado:** Solo ve caracteres limitados de documentos, no su entrenamiento general
 > 2. **Citation Explícita:** Las instrucciones ordenan citar [doc_id] cuando se referencia información
 > 3. **Citation Validation:** Solo citas válidas (IDs en documento set) aparecen en la respuesta
 > 4. **Temperature Control:** 0.7 (creativo pero no aleatorio) + top-p=0.95 (nucleus sampling)
