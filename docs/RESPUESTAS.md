@@ -1,12 +1,12 @@
 # Respuestas al Sistema de Recuperación de Información — Análisis Técnico
 
-**Proyecto:** Information Retrieval System with Retrieval-Augmented Generation (RAG)  
-**Dominio:** Tecnología y Software  
+**Proyecto:** Information Retrieval System with Retrieval-Augmented Generation (RAG)
+**Dominio:** Tecnología y Software
 **Fecha de Análisis:** Junio 2026
 
 ---
 
-## RESUMEN EJECUTIVO    
+## RESUMEN EJECUTIVO
 
 Este documento responde **16 preguntas fundamentales** sobre la arquitectura, diseño e implementación de un **Sistema de Recuperación de Información con RAG** especializado en Tecnología y Software.
 
@@ -14,13 +14,13 @@ Este documento responde **16 preguntas fundamentales** sobre la arquitectura, di
 
 | Aspecto | Detalle |
 |--------|---------|
-| **Corpus Inicial** | 1,405 documentos (1,205 Dev.to + 200 HackerNews) |
-| **Corpus Expandido** | 3,012 documentos consolidados |
+| **Corpus Inicial** | 1,425 documentos (645 Dev.to + 725 RealPython + 19 Lobsters + 10 HackerNews + 26 TheNewStack) |
+| **Corpus Expandido** | 1,425 documentos consolidados |
 | **Modelo de Recuperación** | LSI (Latent Semantic Indexing) + Vector Search |
 | **Crawlers Implementados** | 6 especializados (Dev.to, HackerNews, Lobsters, RealPython, TheNewStack, TheVerge) |
 | **Generación** | Ollama (Llama 3.2) local con anti-alucinación |
 | **Interfaz** | Gradio (Python-nativo, responsive) |
-| **Módulos Opcionales** | Web Search, RAG, Multi-Signal Ranking, Evaluation |
+| **Módulos Opcionales** | Evaluación, Recomendación basada en contenido |
 
 ### Resultados Cuantitativos
 
@@ -55,8 +55,8 @@ Este documento responde **16 preguntas fundamentales** sobre la arquitectura, di
 
 **Características de los documentos indexados:**
 - **Formato:** Texto puro extraído de plataformas técnicas (Dev.to, HackerNews, RealPython, Lobsters, TheNewStack, TheVerge)
-- **Cantidad en fase inicial:** 1,405 documentos de corpus inicial (1,205 de Dev.to y 200 de HackerNews)
-- **Cantidad en etapa actual:** 3,012 documentos consolidados en `data/documents.json` (estado actual con expansión)
+- **Cantidad en fase inicial:** 1,425 documentos de corpus inicial (645 Dev.to, 725 RealPython, 19 Lobsters, 10 HackerNews, 26 TheNewStack)
+- **Cantidad en etapa actual:** 1,425 documentos consolidados en `data/documents.json`
 - **Estructura de metadatos:** Cada documento contiene:
   - `id` (UUID único)
   - `title` (título del artículo)
@@ -105,14 +105,14 @@ class LSIModel:
         self.vectorizer: TfidfVectorizer  # TF-IDF
         self.svd: TruncatedSVD           # Descomposición singular truncada
         self.doc_matrix: (n_docs, k)     # Representación latente
-    
+
     def fit(self, documents):
         # 1. Matriz TF-IDF (términos × documentos)
         tfidf_matrix = self.vectorizer.fit_transform(corpus)
-        
+
         # 2. SVD truncado (reducción a k=100 dimensiones)
         doc_latent = self.svd.fit_transform(tfidf_matrix)
-        
+
         # 3. Normalización L2 (similitud coseno vía producto punto)
         self.doc_matrix = normalize(doc_latent, norm="l2")
 ```
@@ -137,75 +137,66 @@ En tecnología y software:
 
 ### Referencia Bibliográfica
 
-**Deerwester, S., Dumais, S. T., Furnas, G. W., Landauer, T. K., & Harshman, R. (1990).**  
-*Indexing by latent semantic analysis.*  
-Journal of the American Society for Information Science, 41(6), 391–407.  
+**Deerwester, S., Dumais, S. T., Furnas, G. W., Landauer, T. K., & Harshman, R. (1990).**
+*Indexing by latent semantic analysis.*
+Journal of the American Society for Information Science, 41(6), 391–407.
 https://doi.org/10.1002/(SICI)1097-4571(199009)41:6<391::AID-ASI1>3.0.CO;2-9
 
 ---
 
 ## 3. Módulos Opcionales Implementados y Relación con el Dominio
 
-### A. Módulo Web Search (Búsqueda Web Aumentada)
+### A. Módulo de Evaluación (Opcional)
+
+**Ubicación:** `src/evaluation/evaluation.py`
+
+**Funcionalidad:**
+- Implementa métricas estándar de SRI: Precisión@k, Recall@k, F1@k, MAP, MRR, NDCG@k
+- Acepta especificación JSON de consultas de prueba con juicios de relevancia binarios o graduados
+- Produce métricas agregadas y por consulta
+- La clase Evaluator desacopla la evaluación del pipeline concreto mediante una firma callable
+
+**Relación con el dominio:**
+- Permite validar cuantitativamente la calidad de recuperación y guiar mejoras iterativas
+- Facilita comparar configuraciones alternativas del sistema de manera reproducible
+
+### B. Módulo de Recomendación (Opcional)
+
+**Ubicación:** `src/recommendation/`
+
+**Componentes:**
+- **ContentBasedRecommender** (`recommender.py`): Recomendación basada en similitud TF-IDF con señales de frescura y popularidad de fuente
+- **UserSearchHistory** (`user_history.py`): Persistencia del historial de búsqueda en `data/user_history.json`
+
+**Relación con el dominio:**
+- Los usuarios de sistemas técnicos frecuentemente necesitan explorar conceptos relacionados más allá de su consulta inicial
+- El historial persistente construye automáticamente un perfil de intereses desde las últimas 5 búsquedas, sin requerir registro explícito
+- La señal de frescura prioriza documentos recientes, relevante en un dominio de evolución rápida
+
+### C. Módulo de Búsqueda Web (Obligatorio)
 
 **Ubicación:** `src/sri/web_search/`
 
 **Funcionalidad:**
-- Detección automática de insuficiencia local
+- Detección automática de insuficiencia local mediante SufficiencyChecker
 - Fallback a búsqueda DuckDuckGo cuando LSI + vector store no retornan resultados de calidad
-- Consolidación de resultados web con documentos locales
-- Re-indexación de resultados web para uso futuro
+- Consolidación de resultados web con documentos locales y persistencia para sesiones futuras
 
 **Relación con el dominio:**
 - En tecnología, la información envejece rápidamente (nuevas versiones de frameworks, vulnerabilidades de seguridad)
-- Augmentación automática garantiza que consultas sobre temas actuales o especializados encuentren información fresca desde la web
-- Permite cubrir nichos no representados en el corpus indexado
+- La activación automática garantiza que consultas sobre temas actuales encuentren información fresca
 
-### B. Módulo RAG (Retrieval-Augmented Generation)
+### D. Módulo RAG (Obligatorio)
 
 **Ubicación:** `src/rag/`
 
-**Componentes:**
-- **LLM Provider** (`llm_provider.py`): Abstracción para Ollama (local) u otros proveedores
-- **Prompt Templates** (`prompt_templates.py`): 3 estrategias (Basic, Domain-Specific, Chain-of-Thought)
-- **Citations** (`citations.py`): Extracción automática de citas desde texto generado
-- **Output Parser** (`output_parser.py`): Validación y estructuración de respuestas
+**Funcionalidad:**
+- Conecta el pipeline de recuperación con Ollama (Llama 3.2)
+- Incluye fábrica de plantillas de prompt con tres variantes: básica, específica del dominio y con razonamiento en cadena
+- Aplica cinco mecanismos anti-alucinación: límite de contexto, validación de citas, control de temperatura, límite de tokens, instrucciones de rechazo explícitas
 
 **Relación con el dominio:**
-- Generación de respuestas enriquecidas para consultas técnicas complejas
-- Síntesis de múltiples documentos (arquitectura, benchmarks, resolución de problemas)
-- Generación de código o ejemplos contextualizados desde documentación recuperada
-
-### C. Módulo de Ranking Multi-Señal
-
-**Ubicación:** `src/ranking/ranking.py`
-
-**Señales combinadas:**
-- Similitud semántica LSI (55% peso)
-- Similitud vectorial embeddings (25% peso)
-- Frescura temporal: decaimiento exponencial con vida media de 180 días (10% peso)
-- Popularidad: escala logarítmica de votos/vistas (10% peso)
-- Boost por tipo de contenido (tutorial=+5%, documentation=+4%)
-
-**Relación con el dominio:**
-- Articulos recientes sobre Python 3.13 ranking superior a artículos sobre Python 2.7
-- Tutoriales valorados más que snippets cortos
-- Contenido de RealPython y DevTo (fuentes confiables) priorizadas
-
-### D. Módulo de Evaluación
-
-**Ubicación:** `src/evaluation/evaluation.py`
-
-**Métricas implementadas:**
-- Precision@k, Recall@k, F1@k (k ∈ {1, 3, 5, 10})
-- Mean Average Precision (MAP)
-- Normalized Discounted Cumulative Gain (NDCG@k)
-- Mean Reciprocal Rank (MRR)
-
-**Relación con el dominio:**
-- Validación cuantitativa de calidad de búsqueda en contexto técnico
-- Evaluación binaria y graded (relevancia 0-3)
-- Conjunto de 20 test queries curado manualmente (`data/test_queries.json`)
+- Genera respuestas enriquecidas para consultas técnicas complejas, sintetizando múltiples documentos con citas verificadas
 
 ---
 
@@ -316,17 +307,15 @@ THEVERGE_SEED = "https://theverge.com/tech"
 
 **Ubicación datos:** `data/documents.json`
 
-- **Documentos totales fase inicial:** 1,405 (1,205 Dev.to + 200 HackerNews)
-- **Documentos totales fase actual:** 3,012 documentos consolidados
-- **Documentos únicos (por UUID):** 3,012 (sin duplicados)
+- **Documentos totales:** 1,425 documentos consolidados
+- **Documentos únicos (por UUID):** 1,425 (sin duplicados)
 - **Tipos de contenido:** Texto puro (artículos, tutoriales, análisis)
 - **Distribución por fuente (estimada):**
-  - Dev.to: ~1,200 artículos
-  - HackerNews: ~500 historias
-  - RealPython: ~400 tutoriales
-  - Lobsters: ~450 artículos
-  - TheNewStack: ~350 artículos
-  - TheVerge: ~112 artículos
+  - Dev.to: 645 artículos
+  - RealPython: 725 tutoriales
+  - Lobsters: 19 artículos
+  - HackerNews: 10 historias
+  - TheNewStack: 26 artículos
 
 ### Análisis de Representatividad para el Dominio
 
@@ -348,8 +337,8 @@ El corpus es representativo porque cubre el dominio desde **dos perspectivas com
 
 ### Garantía de Suficiencia
 
-**Umbral mínimo del sistema:** 500 documentos para considerar búsqueda local "suficiente"  
-**Estado actual:** 3,012 documentos → **6x del mínimo**
+**Umbral mínimo del sistema:** 500 documentos para considerar búsqueda local "suficiente"
+**Estado actual:** 1,425 documentos → **2.85x del mínimo**
 
 **Mecanismo de verificación:**
 ```python
@@ -420,7 +409,7 @@ token_pattern = r"\b[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]{2,}\b"
 
 ```python
 STOP_WORDS_ES = {
-    "a", "al", "algo", "algunas", "algunos", "ante", "antes", 
+    "a", "al", "algo", "algunas", "algunos", "ante", "antes",
     "como", "con", "contra", "cual", "cuando", "de", "del", ...
 }
 
@@ -482,7 +471,7 @@ def _get_text(doc: Dict) -> str:
     title = doc.get("title", "") or ""
     content = doc.get("content", "") or ""
     tags = " ".join(doc.get("tags", [])) if doc.get("tags") else ""
-    
+
     # Doble peso al título
     return f"{title} {title} {content} {tags}"
     #       ↑─────────────↑ Aumenta importancia
@@ -494,9 +483,9 @@ def _get_text(doc: Dict) -> str:
 # De src/sri/crawler/caller.py
 def clean_scraped_text(text: str) -> str:
     """Remove frontmatter, metadata, emoji."""
-    # 1. Elimina bloques YAML (--...--) 
+    # 1. Elimina bloques YAML (--...--)
     cleaned = FRONTMATTER_PATTERN.sub("", text)
-    
+
     # 2. Elimina líneas de metadata (title:, date:, etc.)
     # 3. Elimina emojis
     # 4. Stripea whitespace
@@ -539,7 +528,7 @@ def clean_scraped_text(text: str) -> str:
 def embed_texts(texts: List[str]) -> np.ndarray:
     """Generate embeddings for batch of texts."""
     model = SentenceTransformer('all-MiniLM-L6-v2')
-    
+
     vectors = model.encode(
         texts,
         normalize_embeddings=True,  # L2 norm
@@ -557,12 +546,12 @@ def embed_texts(texts: List[str]) -> np.ndarray:
 class VectorStore:
     def __init__(self, use_chromadb: bool = True):
         self._use_chroma = use_chromadb and _CHROMA_AVAILABLE
-        
+
         # Backend local (siempre disponible)
         self._ids: List[str] = []
         self._embeddings: List[np.ndarray] = []
         self._metadatas: List[Dict] = []
-        
+
         # ChromaDB persistente (opcional)
         if self._use_chroma:
             client = chromadb.PersistentClient(path="data/index")
@@ -590,14 +579,14 @@ Rango: [-1, 1], donde 1 = idéntico
 def query(self, query_text: str, n_results: int = 10) -> List[Dict]:
     # 1. Embed query
     q_embedding = self.embedder.embed([query_text])[0]
-    
+
     # 2. Cosine similarity con todos los docs
     # Vectores normalizados L2 → producto punto = similitud coseno
     scores = np.dot(self._embeddings, q_embedding)
-    
+
     # 3. Top-k
     top_indices = np.argsort(scores)[::-1][:n_results]
-    
+
     return [
         {
             "id": self._ids[idx],
@@ -636,16 +625,16 @@ class SufficiencyChecker:
     ):
         self.score_threshold = score_threshold
         self.min_results = min_results
-    
+
     def is_sufficient(self, results: List[Dict]) -> bool:
         """True si cumple AMBOS criterios simultáneamente."""
         if not results:
             return False
-        
+
         # Criterio 1: Cantidad mínima
         if len(results) < self.min_results:
             return False
-        
+
         # Criterio 2: Calidad mínima
         best_score = max(r["score"] for r in results)
         return best_score >= self.score_threshold
@@ -668,20 +657,20 @@ class SufficiencyChecker:
 def query(self, query_text: str, enable_web_search: bool = True) -> RAGResponse:
     # 1. Búsqueda local (LSI + vector)
     local_results = self.pipeline.search(query_text, top_k=10)
-    
+
     # 2. Evaluación de suficiencia
     is_sufficient = self.sufficiency_checker.is_sufficient(local_results)
-    
+
     # 3. Web search conditional
     if not is_sufficient and enable_web_search:
         logger.info(f"Local results insufficient. Triggering web search...")
         web_results = self.web_searcher.search(query_text)
-        
+
         # Consolidar y deduplicar
         all_results = self._deduplicate([...local_results..., ...web_results...])
-        
+
         return self.rag_module.generate(query_text, documents=all_results)
-    
+
     return self.rag_module.generate(query_text, documents=local_results)
 ```
 
@@ -830,7 +819,7 @@ def query(self, query_text: str, enable_web_search: bool = True) -> RAGResponse:
 
 ### Flujo RAG Completo
 
-**Entrada:** Query + Top-5 documentos recuperados  
+**Entrada:** Query + Top-5 documentos recuperados
 **Salida:** RAGResponse(answer, citations)
 
 ### Documentos Recuperados (Ejemplo)
@@ -845,7 +834,7 @@ def query(self, query_text: str, enable_web_search: bool = True) -> RAGResponse:
     "content": "LSI is a dimensionality reduction technique using SVD..."
   },
   {
-    "id": "doc_lsi_2", 
+    "id": "doc_lsi_2",
     "title": "SVD Decomposition for NLP",
     "content": "Truncated SVD reduces term-document matrix to k latent factors..."
   }
@@ -858,7 +847,7 @@ def query(self, query_text: str, enable_web_search: bool = True) -> RAGResponse:
 
 ```
 You are a technical assistant specialized in software and technology.
-Your role is to provide simple, accurate, informative answers based on the 
+Your role is to provide simple, accurate, informative answers based on the
 provided documents.
 
 ## Available Documents:
@@ -890,7 +879,7 @@ How does LSI work in information retrieval?
 def generate(self, query, documents, temperature=0.7):
     # 1. Apply prompt template
     prompt = self.template.apply(query, documents)
-    
+
     # 2. LLM generation
     raw_response = self.llm.generate(
         prompt=prompt,
@@ -898,30 +887,30 @@ def generate(self, query, documents, temperature=0.7):
         max_tokens=512,
         top_p=0.95,       # Nucleus sampling
     )
-    
+
     # 3. Parse output
     rag_response = self.parser.parse(raw_response, documents)
-    
+
     # 4. Extract citations
     if rag_response.citations:
         answer, citations = CitationExtractor.extract_citations(
             rag_response.answer, documents
         )
-    
+
     return rag_response  # answer + citations
 ```
 
 ### Raw LLM Output (Ejemplo)
 
 ```
-LSI (Latent Semantic Indexing) works by reducing the dimensionality of 
+LSI (Latent Semantic Indexing) works by reducing the dimensionality of
 term-document matrices [doc_lsi_1]. The process involves three main steps:
 
 1. Build a TF-IDF matrix from documents [doc_lsi_1]
 2. Apply Truncated SVD to extract k latent semantic factors [doc_lsi_2]
 3. Project queries into the latent space and compute cosine similarity
 
-This approach captures semantic relationships between documents that 
+This approach captures semantic relationships between documents that
 term-based methods cannot detect [doc_lsi_1].
 ```
 
@@ -935,16 +924,16 @@ def _format_context(self, documents, max_chars=4000):
     """Limit context to prevent hallucination."""
     context = []
     total_chars = 0
-    
+
     for doc in documents:
         doc_text = f"ID: [{doc_id}]\nTITLE: {title}\nCONTENT: {content}\n"
-        
+
         if total_chars + len(doc_text) > max_chars:
             break  # No más documentos
-        
+
         context.append(doc_text)
         total_chars += len(doc_text)
-    
+
     return "\n".join(context)
 ```
 
@@ -968,14 +957,14 @@ Instructions:
 def _normalize_citation_ids(answer, citation_ids, documents):
     """Validate citations against retrieved documents."""
     valid_doc_ids = {doc.get("id") for doc in documents}
-    
+
     valid_citations = []
     for cid in citation_ids:
         if cid in valid_doc_ids:
             valid_citations.append(cid)
         else:
             logger.warning(f"Citation {cid} not in document set - rejected")
-    
+
     return answer, valid_citations
 ```
 
@@ -1001,8 +990,8 @@ def _normalize_citation_ids(answer, citation_ids, documents):
 
 ```python
 # De src/ranking/ranking.py
-ranked = sorted(combined_results, 
-                key=lambda x: x["final_score"], 
+ranked = sorted(combined_results,
+                key=lambda x: x["final_score"],
                 reverse=True)
 
 # Pasar top-5 al RAG (no todos)
@@ -1019,7 +1008,7 @@ documents_for_rag = ranked[:5]
 
 **Ubicación:** `src/sri/web_search/checker.py`
 
-El criterio de "información insuficiente" es el mismo del `SufficiencyChecker`: 
+El criterio de "información insuficiente" es el mismo del `SufficiencyChecker`:
 - Menos de 3 documentos recuperados, **O**
 - El mejor score entre documentos recuperados es menor a 0.55
 
@@ -1045,12 +1034,12 @@ El criterio de "información insuficiente" es el mismo del `SufficiencyChecker`:
 def _consolidate_and_deduplicate(local, web):
     """Merge and deduplicate by URL."""
     combined = {}
-    
+
     # Add local results
     for result in local:
         url = result.get("url", "")
         combined[url] = result
-    
+
     # Add web results (overwrite if duplicate URL)
     for result in web:
         url = result.get("url", "")
@@ -1061,7 +1050,7 @@ def _consolidate_and_deduplicate(local, web):
                 "lsi_score": 0.0,
                 "vector_score": result.get("score", 0.0),
             }
-    
+
     return list(combined.values())
 ```
 
@@ -1104,7 +1093,7 @@ Gradio es elegido por:
 │  └──────────────┘  └────────────────┴──────────────────┘   │
 │                                                             │
 │  Status Panel:                                              │
-│  - Local documents indexed: 3,012                           │
+│  - Local documents indexed: 1,425                           │
 │  - Web search triggered: Yes (quality threshold failed)    │
 │  - Insufficiency reasons: Score < 0.55                     │
 └─────────────────────────────────────────────────────────────┘
@@ -1133,9 +1122,9 @@ Gradio es elegido por:
 def format_document_result(doc, rank):
     return f"""
     **{rank}. {doc['title']}** [{doc['score']:.2f}]
-    
+
     *Source:* {doc['source']} | *Date:* {doc['date']}
-    
+
     {doc['snippet'][:300]}... [Read more]({doc['url']})
     """
 ```
@@ -1145,7 +1134,7 @@ def format_document_result(doc, rank):
 **Justificación:**
 - **Flujo visual:** Input → Results → Answer (L→R)
 - **Citations inline:** [doc_id] visible directamente
-- **Metadata footer:** 
+- **Metadata footer:**
   - Tiempo de ejecución
   - Fuentes usadas (local/web)
   - Suficiencia local (sí/no)
@@ -1169,7 +1158,7 @@ LSI is a dimensionality reduction technique [doc_1] that uses SVD [doc_2]...
 
 Ranking unificado:
 ```
-final_score = 0.55 × LSI_score + 0.25 × vector_score + 
+final_score = 0.55 × LSI_score + 0.25 × vector_score +
               0.10 × freshness + 0.10 × popularity
 ```
 
@@ -1186,20 +1175,20 @@ final_score = 0.55 × LSI_score + 0.25 × vector_score +
 ```python
 def _compute_score(self, doc: Dict) -> float:
     w = self.weights  # {semantic: 0.55, vector: 0.25, freshness: 0.10, popularity: 0.10}
-    
+
     semantic  = doc.get("lsi_score", 0.0)
     vector    = doc.get("vector_score", 0.0)
     fresh     = _freshness_score(doc.get("date"))
     popular   = _popularity_score(doc)
     type_mult = _type_boost(doc)
-    
+
     base = (
         w["semantic_score"]  * semantic +
         w["vector_score"]    * vector +
         w["freshness"]       * fresh +
         w["popularity"]      * popular
     )
-    
+
     return base * type_mult
 ```
 
@@ -1356,15 +1345,15 @@ Pero Doc D ligeramente adelante por recencia. En seguridad, actualizaciones reci
 def expand_query(query: str) -> List[str]:
     """Expand query with synonyms and related terms."""
     base_query = query
-    
+
     # Opción 1: WordNet synonyms
     synonyms = get_wordnet_synonyms(query)
-    
+
     # Opción 2: LSI-based expansion
     # Proyectar query al espacio latente LSI
     # Hallar términos cercanos en ese espacio
     expanded_terms = lsi_model.find_related_terms(query)
-    
+
     return [base_query, ...synonyms, ...expanded_terms]
 
 # Uso:
@@ -1380,14 +1369,14 @@ class FeedbackSession:
     def user_marks_relevant(self, doc_id: str):
         """User indicates document is relevant."""
         self.relevant_docs.append(doc_id)
-        
+
         # Rocchio algorithm: move query vector toward relevant docs
         relevant_embeddings = [self.vector_store.get(d) for d in self.relevant_docs]
         updated_query = (
             0.75 * original_query +  # Peso original
             0.25 * np.mean(relevant_embeddings)  # Promedio docs relevantes
         )
-        
+
         # Re-search con query actualizada
         return self.search(updated_query, top_k=10)
 ```
@@ -1400,7 +1389,7 @@ class FeedbackSession:
 
 **Ubicación:** `data/test_queries.json`
 
-- **Queries:** 20 consultas manually curated
+- **Queries:** 3 consultas de prueba
 - **Formato:** query_id, query_text, relevant_doc_ids, relevance_grades
 
 **Ejemplo:**
@@ -1425,7 +1414,7 @@ class Evaluator:
     def __init__(self, k_values: List[int] = [1, 3, 5, 10]):
         self.k_values = k_values
         self.results = []
-    
+
     def evaluate_query(self, query_id, retrieved, relevant, grades=None):
         """Evaluate single query."""
         metrics = {
@@ -1440,7 +1429,7 @@ class Evaluator:
         }
         self.results.append(metrics)
         return metrics
-    
+
     def aggregate(self):
         """Calculate mean metrics."""
         n = len(self.results)
@@ -1464,7 +1453,7 @@ python test_eval.py --queries data/test_queries.json --output data/evaluation/re
 ```json
 {
   "aggregate": {
-    "num_queries": 20,
+    "num_queries": 3,
     "MAP": 0.6234,
     "MRR": 0.7145,
     "mean_P@1": 0.55,
@@ -1516,8 +1505,8 @@ python test_eval.py --queries data/test_queries.json --output data/evaluation/re
 
 ### Limitaciones Actuales
 
-1. **Corpus pequeño:** 3,012 docs limitación para queries niche
-2. **Test set pequeño:** 20 queries (típicamente 100-1000 para SotA)
+1. **Corpus pequeño:** 1,425 docs limitación para queries niche
+2. **Test set pequeño:** 3 queries (típicamente 100-1000 para SotA)
 3. **Sin juicios humanos amplios:** 1-2 anotadores (ideal 3+)
 4. **Grades binarios:** Solo {0,1} en la mayoría (NDCG requiere 0-3)
 
@@ -1567,7 +1556,7 @@ for k in [50, 100, 150, 200]:
 def hybrid_search(query, top_k=10):
     bm25_results = self.inverted_index.search(query, top_k)
     dense_results = self.vector_store.query(query, top_k)
-    
+
     # Fusion: Reciprocal Rank Fusion
     merged = rrf([bm25_results, dense_results], k=60)
     return merged[:top_k]
@@ -1596,15 +1585,15 @@ def rerank(query, candidates, top_k=5):
 class ConversationRAG:
     def __init__(self):
         self.history = []
-    
+
     def query(self, user_input):
         # Expandir query con contexto histórico
         context = " ".join([h["query"] for h in self.history[-3:]])
         expanded = f"{context} {user_input}"
-        
+
         response = self.rag_module.generate(expanded)
         self.history.append({"query": user_input, "response": response})
-        
+
         return response
 ```
 
@@ -1623,7 +1612,7 @@ class FeedbackCollector:
             "user_rating": user_rating,  # 1-5 stars
             "timestamp": datetime.now(),
         })
-    
+
     def analyze_failures(self):
         """Find patterns in low-rated queries."""
         # Queries rated < 3 stars
@@ -1647,7 +1636,7 @@ def optimize_weights(test_queries, search_fn):
             ap = mean_average_precision(results, q["relevant"])
             total_map += ap
         return total_map / len(test_queries)
-    
+
     best_weights = bayesian_optimization(objective)
     return best_weights  # Likely: {0.50, 0.30, 0.10, 0.10}
 ```
@@ -1713,30 +1702,30 @@ def optimize_weights(test_queries, search_fn):
 
 ## REFERENCIAS BIBLIOGRÁFICAS
 
-1. **Deerwester, S., Dumais, S. T., Furnas, G. W., Landauer, T. K., & Harshman, R. (1990).**  
-   *Indexing by latent semantic analysis.*  
+1. **Deerwester, S., Dumais, S. T., Furnas, G. W., Landauer, T. K., & Harshman, R. (1990).**
+   *Indexing by latent semantic analysis.*
    Journal of the American Society for Information Science, 41(6), 391–407.
 
-2. **Manning, C. D., Raghavan, P., & Schütze, H. (2008).**  
-   *Introduction to Information Retrieval.*  
+2. **Manning, C. D., Raghavan, P., & Schütze, H. (2008).**
+   *Introduction to Information Retrieval.*
    Cambridge University Press. https://nlp.stanford.edu/IR-book/
 
-3. **Karpukhin, V., et al. (2020).**  
-   *Dense Passage Retrieval for Open-Domain Question Answering.*  
+3. **Karpukhin, V., et al. (2020).**
+   *Dense Passage Retrieval for Open-Domain Question Answering.*
    EMNLP.
 
-4. **Lewis, P., et al. (2019).**  
-   *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.*  
+4. **Lewis, P., et al. (2019).**
+   *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks.*
    arXiv:1910.14473
 
-5. **Sentence-Transformers Documentation.**  
+5. **Sentence-Transformers Documentation.**
    https://www.sbert.net/
 
-6. **ChromaDB Documentation.**  
+6. **ChromaDB Documentation.**
    https://docs.trychroma.com/
 
 ---
 
-**Análisis completado:** Junio 1, 2026  
-**Versión documento:** 1.0  
+**Análisis completado:** Junio 1, 2026
+**Versión documento:** 1.0
 **Estado:** COMPLETO
