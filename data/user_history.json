@@ -1,0 +1,26 @@
+{
+  "default": [
+    {
+      "query": "API",
+      "timestamp": "2026-06-02T11:33:48.520067+00:00",
+      "retrieved_doc_ids": [
+        "d9b564a9-0aa5-4bed-a021-097a8c1bfa5e",
+        "16e95dc9-9524-46ea-bed4-d58068ab2679",
+        "4d0b5a09-203e-4f68-8cd7-c2cd62ddb05c",
+        "92219c4a-773f-4da1-9d19-807006b8721e",
+        "db2587ca-8406-4b77-a12e-b3a95baaf778"
+      ]
+    },
+    {
+      "query": "Aplication",
+      "timestamp": "2026-06-02T11:34:33.140319+00:00",
+      "retrieved_doc_ids": [
+        "000e5347-eb8a-4d5d-bc46-2bc072d7cdcb",
+        "f2d4e6a3-97af-4a19-b957-9f086f74b7f2",
+        "9904b86f-8ff5-4930-8957-b4d2c711af5d",
+        "93ad3055-5f5f-4861-87d3-a3e58084c1e1",
+        "88100c3b-4edb-485e-ab28-ede4fbe5d82a"
+      ]
+    }
+  ]
+}

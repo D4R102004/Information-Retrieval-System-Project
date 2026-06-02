@@ -144,6 +144,19 @@ class OrchestratorService:
     def refresh_recommender(self) -> dict[str, Any]:
         return self._get_orchestrator().refresh_recommender()
 
+    def recommend_from_history(self, user_id: str = "default", top_k: int = 10, history_limit: int = 5) -> dict[str, Any]:
+        return self._get_orchestrator().recommend_from_history(
+            user_id=user_id,
+            top_k=top_k,
+            history_limit=history_limit,
+        )
+
+    def get_search_history(self, user_id: str = "default", limit: int = 5) -> dict[str, Any]:
+        return self._get_orchestrator().get_search_history(user_id=user_id, limit=limit)
+
+    def clear_search_history(self, user_id: str = "default") -> dict[str, Any]:
+        return self._get_orchestrator().clear_search_history(user_id=user_id)
+
     def count_raw_documents(self, folder: str = "*") -> int:
         return self._get_orchestrator().crawler_caller.count_raw_documents(folder.lower())
     

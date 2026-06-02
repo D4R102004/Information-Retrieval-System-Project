@@ -18,7 +18,7 @@ from .services.search_service import (
 from .state import UIState, create_default_state
 from .tabs.configuration import build_configuration_tab
 from .tabs.evaluation import build_evaluation_tab
-from .tabs.recommendation import build_recommendation_tab
+from .tabs.recommendation import build_recommendation_tab, _format_recommendations
 from .tabs.status import build_status_tab
 from .utils import validate_query
 
@@ -124,6 +124,7 @@ def create_app() -> gr.Blocks:
                             format_progress_panel(progress_events),
                             error_message,
                             session_state,
+                            gr.update(),
                         )
                         return
 
@@ -161,6 +162,7 @@ def create_app() -> gr.Blocks:
                                 session_state.last_query,
                             ),
                             session_state,
+                            gr.update(),
                         )
 
                     documents_raw = retrieval_result.get("documents", [])
@@ -194,6 +196,7 @@ def create_app() -> gr.Blocks:
                             format_progress_panel(progress_events),
                             status_text,
                             session_state,
+                            gr.update(),
                         )
                         return
 
@@ -225,6 +228,7 @@ def create_app() -> gr.Blocks:
                         format_progress_panel(progress_events),
                         status_text,
                         session_state,
+                        gr.update(),
                     )
 
                     rag_response = orchestrator_service.augment_response(
@@ -241,12 +245,23 @@ def create_app() -> gr.Blocks:
                         }
                     )
 
+                    automatic_recommendation = orchestrator_service.recommend_from_history(
+                        top_k=10,
+                        history_limit=5,
+                    )
+                    automatic_recommendation_text = _format_recommendations(automatic_recommendation).replace(
+                        "### Recommendation results",
+                        "### Automatic recommendations",
+                        1,
+                    )
+
                     yield (
                         results_text,
                         format_rag_response(rag_response),
                         format_progress_panel(progress_events),
                         status_text,
                         session_state,
+                        automatic_recommendation_text,
                     )
 
                 def reset_search(
@@ -266,17 +281,6 @@ def create_app() -> gr.Blocks:
                         default_state,
                     )
 
-                search_button.click(
-                    fn=run_search,
-                    inputs=[query_input, app_state],
-                    outputs=[
-                        results_output,
-                        rag_output,
-                        progress_output,
-                        status_output,
-                        app_state,
-                    ],
-                )
                 clear_button.click(
                     fn=reset_search,
                     inputs=[app_state],
@@ -305,10 +309,24 @@ def create_app() -> gr.Blocks:
                 build_evaluation_tab()
 
             with gr.Tab("Recommendation"):
-                build_recommendation_tab()
+                automatic_recommendation_output = build_recommendation_tab()
 
             with gr.Tab("System Status"):
                 build_status_tab()
+
+
+        search_button.click(
+            fn=run_search,
+            inputs=[query_input, app_state],
+            outputs=[
+                results_output,
+                rag_output,
+                progress_output,
+                status_output,
+                app_state,
+                automatic_recommendation_output,
+            ],
+        )
 
         demo.load(
             fn=lambda current_state: _render_placeholder_results(current_state),

@@ -1112,3 +1112,27 @@ orchestrator.recommend_similar_documents(
 
 The Gradio UI also includes a new **Recommendation** tab where the user can generate
 profile-based recommendations or find documents similar to a selected document ID.
+
+### Automatic recommendations from recent searches
+
+The recommendation module also persists user search behavior in `data/user_history.json`.
+Every successful search executed from the Search tab is recorded with:
+
+- the search query,
+- the timestamp,
+- the document IDs retrieved by that search.
+
+The method `recommend_from_history()` builds an automatic user profile from the latest 5 searches
+and recommends new documents from the local corpus:
+
+```python
+orchestrator.recommend_from_history(
+    user_id="default",
+    top_k=10,
+    history_limit=5,
+)
+```
+
+In the Gradio UI, each completed Search tab query automatically refreshes the **Automatic recommendations**
+section inside the **Recommendation** tab. The user can also manually regenerate those recommendations or
+clear the stored search history from that same tab.

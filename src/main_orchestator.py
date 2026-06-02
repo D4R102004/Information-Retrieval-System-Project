@@ -39,6 +39,7 @@ try:
 except ModuleNotFoundError:
     WebSearcher = None  # type: ignore[assignment]
 from recommendation.recommender import ContentBasedRecommender
+from recommendation.user_history import UserSearchHistory
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +75,11 @@ class MainOrchestator:
         self.data_dir = Path(__file__).resolve().parent.parent / "data"
         self.documents_path = self.data_dir / "documents.json"
         self.raw_data_dir = self.data_dir / "raw"
+        self.user_history_path = self.data_dir / "user_history.json"
 
         # Optional recommendation module
         self.recommender = ContentBasedRecommender(self.documents_path)
+        self.search_history = UserSearchHistory(self.user_history_path)
         
         logging.basicConfig(
             level=logging.INFO,
@@ -752,6 +755,12 @@ class MainOrchestator:
         metadata['retrieved_documents'] = all_documents
         self._log_step("retrieve_documents", f"Consolidated {len(all_documents)} documents")
 
+        # Store successful searches for the automatic recommendation module.
+        # Evaluation calls use _search_locally directly, so this does not pollute
+        # the history with benchmark queries.
+        history_result = self.record_search_history(question, all_documents)
+        metadata['search_history_updated'] = bool(history_result.get('success'))
+
         return {
             'documents': all_documents,
             'metadata': metadata,
@@ -1075,6 +1084,120 @@ class MainOrchestator:
                 "message": str(e),
                 "total_documents": 0,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+    def record_search_history(
+        self,
+        query: str,
+        retrieved_documents: Optional[List[Dict[str, Any]]] = None,
+        user_id: str = "default",
+    ) -> Dict[str, Any]:
+        """Store a user search so recommendations can use recent behavior."""
+        try:
+            return self.search_history.add_search(
+                query=query,
+                retrieved_documents=retrieved_documents or [],
+                user_id=user_id,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to record search history: {e}")
+            return {"success": False, "message": str(e)}
+
+    def get_search_history(
+        self,
+        user_id: str = "default",
+        limit: int = 5,
+    ) -> Dict[str, Any]:
+        """Return the latest searches used by automatic recommendations."""
+        try:
+            searches = self.search_history.latest_searches(user_id=user_id, limit=limit)
+            return {
+                "status": "success",
+                "searches": searches,
+                "metadata": {
+                    "user_id": user_id,
+                    "limit": limit,
+                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                },
+            }
+        except Exception as e:
+            logger.error(f"Failed to read search history: {e}")
+            return {"status": "error", "message": str(e), "searches": []}
+
+    def clear_search_history(self, user_id: str = "default") -> Dict[str, Any]:
+        """Clear the stored search history for a user."""
+        try:
+            result = self.search_history.clear(user_id=user_id)
+            result.update({"status": "success", "message": "Search history cleared."})
+            return result
+        except Exception as e:
+            logger.error(f"Failed to clear search history: {e}")
+            return {"status": "error", "message": str(e), "removed_entries": 0}
+
+    def recommend_from_history(
+        self,
+        user_id: str = "default",
+        top_k: int = 10,
+        history_limit: int = 5,
+    ) -> Dict[str, Any]:
+        """Recommend documents from the user's latest searches.
+
+        The automatic recommender uses the latest ``history_limit`` searches
+        (default: 5). Their query texts form the user profile and the documents
+        retrieved in those searches become seed documents. Seed documents are
+        excluded from the final list to avoid recommending the exact same items
+        the user just saw.
+        """
+        try:
+            if not self.recommender.documents:
+                self.refresh_recommender()
+
+            history_limit = max(5, int(history_limit))
+            profile = self.search_history.build_profile(user_id=user_id, limit=history_limit)
+            if not profile["queries"]:
+                return {
+                    "status": "empty",
+                    "message": "No search history yet. Run a search first to generate automatic recommendations.",
+                    "recommendations": [],
+                    "metadata": {
+                        "user_id": user_id,
+                        "history_limit": history_limit,
+                        "searches_used": [],
+                        "generated_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                }
+
+            seed_doc_ids = profile["seed_doc_ids"]
+            result = self.recommender.recommend(
+                query=profile["query_profile"],
+                liked_doc_ids=seed_doc_ids,
+                exclude_doc_ids=seed_doc_ids,
+                top_k=top_k,
+            )
+            metadata = result.setdefault("metadata", {})
+            metadata.update(
+                {
+                    "user_id": user_id,
+                    "history_based": True,
+                    "history_limit": history_limit,
+                    "queries_used": profile["queries"],
+                    "searches_used": profile["searches_used"],
+                    "seed_doc_ids_used": seed_doc_ids,
+                }
+            )
+            if result.get("status") == "success":
+                result["message"] = (
+                    f"Generated {len(result.get('recommendations', []))} automatic recommendations "
+                    f"from the latest {len(profile['queries'])} search(es)."
+                )
+            return result
+        except Exception as e:
+            logger.error(f"History-based recommendation failed: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "recommendations": [],
+                "metadata": {"user_id": user_id, "history_limit": history_limit},
             }
 
     def recommend_documents(

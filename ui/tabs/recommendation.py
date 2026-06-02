@@ -24,14 +24,24 @@ def _format_recommendations(result: dict[str, Any]) -> str:
     recommendations = result.get("recommendations") or []
     metadata = result.get("metadata") or {}
 
+    if status == "empty":
+        return f"### Recommendation results\n\nℹ️ {message or 'No search history available yet.'}"
+
     if status != "success":
         return f"### Recommendation results\n\n❌ {message or 'Recommendation failed.'}"
+
+    queries_used = metadata.get("queries_used") or []
+    history_note = ""
+    if queries_used:
+        recent = " | ".join(str(query) for query in queries_used[-5:])
+        history_note = f"\n**Based on recent searches:** {recent}\n"
 
     lines = [
         "### Recommendation results",
         "",
         f"**{message}**",
         f"Corpus documents: `{metadata.get('total_documents', 0)}` | Candidates: `{metadata.get('candidate_documents', 0)}`",
+        history_note,
         "",
     ]
 
@@ -68,7 +78,7 @@ def _format_recommendations(result: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def build_recommendation_tab() -> None:
+def build_recommendation_tab() -> gr.Markdown:
     """Build the recommendation module tab."""
     service = get_orchestrator_service()
 
@@ -76,11 +86,29 @@ def build_recommendation_tab() -> None:
         """
         ## Recommendation module
 
-        Generate content-based recommendations from the local corpus. You can use a free-text profile,
-        the current topic of interest, and/or document IDs that the user liked or selected.
+        Generate recommendations from the local corpus. The automatic section updates after searches
+        from the Search tab and uses at least the latest 5 stored searches when available.
         """
     )
 
+    gr.Markdown("### Automatic recommendations from recent searches")
+    with gr.Row():
+        auto_top_k_input = gr.Slider(
+            label="Automatic results",
+            minimum=1,
+            maximum=20,
+            value=10,
+            step=1,
+            scale=2,
+        )
+        auto_recommend_button = gr.Button("Generate from latest 5 searches", variant="primary", scale=3)
+        clear_history_button = gr.Button("Clear search history", variant="secondary", scale=2)
+
+    automatic_recommendation_output = gr.Markdown(
+        "### Automatic recommendations\n\nRun a search in the Search tab to generate recommendations from your latest searches."
+    )
+
+    gr.Markdown("### Manual recommendations")
     with gr.Row():
         with gr.Column(scale=5):
             interests_input = gr.Textbox(
@@ -150,12 +178,32 @@ def build_recommendation_tab() -> None:
             f"{icon} {result.get('message', 'Refresh completed.')}"
         )
 
+    def run_automatic_recommendation(top_k: int) -> str:
+        result = service.recommend_from_history(top_k=int(top_k), history_limit=5)
+        text = _format_recommendations(result)
+        return text.replace("### Recommendation results", "### Automatic recommendations", 1)
+
+    def clear_history() -> str:
+        result = service.clear_search_history()
+        icon = "✅" if result.get("status") == "success" else "❌"
+        return (
+            "### Automatic recommendations\n\n"
+            f"{icon} {result.get('message', 'Search history cleared.')}"
+        )
+
     def run_similar(document_id: str, top_k: int) -> str:
         if not document_id or not document_id.strip():
             return "### Similar documents\n\nPlease provide a document ID."
         result = service.recommend_similar_documents(document_id.strip(), top_k=int(top_k))
         text = _format_recommendations(result)
         return text.replace("### Recommendation results", "### Similar documents", 1)
+
+    auto_recommend_button.click(
+        fn=run_automatic_recommendation,
+        inputs=[auto_top_k_input],
+        outputs=[automatic_recommendation_output],
+    )
+    clear_history_button.click(fn=clear_history, inputs=[], outputs=[automatic_recommendation_output])
 
     recommend_button.click(
         fn=run_recommendation,
@@ -168,3 +216,5 @@ def build_recommendation_tab() -> None:
         inputs=[similar_doc_input, similar_top_k_input],
         outputs=[similar_output],
     )
+
+    return automatic_recommendation_output
