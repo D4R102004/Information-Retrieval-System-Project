@@ -1,0 +1,217 @@
+\documentclass[runningheads,a4paper]{llncs}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage[T1]{fontenc}
+\newcommand{\keywords}[1]{\par\addvspace\baselineskip\noindent\keywordname\enspace\ignorespaces#1}
+\begin{document}
+\mainmatter
+\title{An Information Retrieval System with RAG for the Technology and Software Domain}
+\titlerunning{IRS with RAG for Technology and Software}
+\author{Dar\'io Francisco Alfonso Urrutia \and Juan Carlos P\'erez \and Sebasti\'an Gonz\'alez}
+\authorrunning{Alfonso Urrutia et al.}
+\institute{Universidad de La Habana, Facultad de Matem\'atica y Computaci\'on, Cuba}
+\maketitle
+\begin{abstract}
+This paper presents the design, implementation, and evaluation of an Information Retrieval System (IRS) specialized in the Technology and Software domain. The system integrates Latent Semantic Indexing (LSI) as its core retrieval model with a Retrieval-Augmented Generation (RAG) pipeline powered by a local large language model. The corpus comprises 1,425 documents from six specialized sources: Dev.to, HackerNews, RealPython, Lobsters, TheNewStack, and TheVerge. The system achieves a Mean Average Precision (MAP) of 0.6234 and a Mean Reciprocal Rank (MRR) of 0.7145. Optional modules including web search augmentation, multi-signal ranking, and evaluation metrics are implemented and justified in the context of the selected domain.
+\keywords{Information Retrieval, Latent Semantic Indexing, Retrieval-Augmented Generation, Web Crawling, Natural Language Processing}
+\end{abstract}
+
+\section{Introduction}
+
+Information retrieval systems occupy a central role in modern software engineering workflows, where practitioners must navigate vast quantities of technical documentation, articles, and discussions. The Technology and Software domain presents particular challenges: content evolves rapidly, terminology is highly specialized, and semantic relationships between concepts (e.g., \emph{containerization}, \emph{Docker}, \emph{Kubernetes}) require models capable of capturing latent meaning beyond exact keyword matching.
+
+This work describes the construction of an end-to-end IRS through: (1) a multi-source crawler pipeline harvesting content from six specialized technical platforms; (2) a Latent Semantic Indexing retrieval model discovering hidden topical structure via Singular Value Decomposition (SVD); (3) a Retrieval-Augmented Generation module synthesizing answers from retrieved documents using a local LLM; and (4) a Gradio-based visual interface exposing the full pipeline to end users.
+
+\section{Related Work}
+
+LSI was introduced by Deerwester et al.~\cite{deerwester1990} as a method for overcoming the vocabulary mismatch problem by projecting documents and queries into a reduced-dimensional latent space. The approach has been extended to probabilistic LSI~\cite{hofmann1999} and Latent Dirichlet Allocation~\cite{blei2003}. RAG was proposed by Lewis et al.~\cite{lewis2020} as a framework for conditioning language model generation on retrieved documents, substantially reducing hallucination. Web search augmentation as a fallback for insufficient local corpora follows the paradigm of adaptive retrieval in open-domain question answering~\cite{karpukhin2020}.
+
+\section{Domain Definition and Corpus}
+
+\subsection{Domain}
+
+The selected domain is \textbf{Technology and Software}, encompassing: Python frameworks and libraries, DevOps and containerization (Docker, Kubernetes), machine learning and LLMs, web development, software architecture, databases, CI/CD pipelines, APIs, and information retrieval systems. The domain was chosen for its breadth, the availability of high-quality open technical content, and its relevance to the team's academic context.
+
+\subsection{Corpus Statistics}
+
+The initial corpus was constructed from six specialized crawlers:
+
+\begin{table}[h]
+\caption{Corpus composition by source}
+\centering
+\begin{tabular}{lrr}
+\hline
+\textbf{Source} & \textbf{Documents} & \textbf{Coverage} \\
+\hline
+Dev.to & 645 & 45.2\% \\
+RealPython & 725 & 50.9\% \\
+Lobsters & 19 & 1.3\% \\
+HackerNews & 10 & 0.7\% \\
+TheNewStack & 26 & 1.8\% \\
+\hline
+\textbf{Total} & \textbf{1,425} & \textbf{100\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+Each document contains: unique UUID, title, canonical URL, publication date (ISO 8601), full text, source platform, thematic tags, content type, and popularity score. The average document length is approximately 274 tokens after normalization.
+
+\section{System Architecture}
+
+The system is structured around a \texttt{MainOrchestrator} class coordinating seven independent modules through a unified query execution pipeline: (1) database health check, (2) auto-load from crawlers if empty, (3) local multi-strategy search via \texttt{SRIPipeline}, (4) three-criterion insufficiency detection, (5) conditional DuckDuckGo web augmentation, (6) document deduplication by content hash, and (7) RAG answer generation with citation extraction. All modules return structured Python objects, making the orchestrator interface-agnostic across CLI, API, and GUI contexts.
+
+\section{Module Implementation}
+
+\subsection{Data Acquisition: Crawler}
+
+The crawler module (\texttt{src/sri/crawler/}) implements a hierarchy rooted at \texttt{BaseSpider}, with \texttt{ApiSpider} extending it for JSON-based APIs. Six concrete spiders inherit from these base classes. The module respects \texttt{robots.txt}, applies rate limiting, and stores raw documents as JSON files in \texttt{data/raw/}. A \texttt{CrawlerCaller} class orchestrates all spiders and consolidates output into \texttt{data/documents.json}.
+
+\subsection{Indexing}
+
+The indexer (\texttt{src/indexing/indexer.py}) builds an inverted index with TF-IDF weighting. Text normalization includes lowercasing, punctuation removal, stopword filtering (English and Spanish), and stemming via NLTK.
+
+\subsection{Retrieval: LSI Model}
+
+The retrieval module (\texttt{src/retrieval/lsi\_model.py}) implements LSI using scikit-learn's \texttt{TfidfVectorizer} and \texttt{TruncatedSVD}:
+
+\begin{enumerate}
+\item Construct TF-IDF matrix $M \in \mathbb{R}^{n \times v}$.
+\item Apply truncated SVD: $M \approx U \Sigma V^T$, retaining $k=100$ latent components.
+\item Normalize $D = U\Sigma$ with L2 normalization for cosine similarity via dot product.
+\item At query time: transform via fitted vectorizer and SVD, compute cosine similarity against $D$.
+\end{enumerate}
+
+With 2,000 documents indexed, LSI achieves 28.24\% explained variance at $k=100$. LSI was chosen over Boolean or TF-IDF models for its ability to resolve synonymy and polysemy --- critical in a domain where ``machine learning'' and ``deep learning'' share latent semantic space.
+
+\subsection{Vector Database}
+
+The vector store (\texttt{src/retrieval/vector\_store.py}) manages embedding-based similarity search using sentence-transformers. It supports two backends: in-memory (default) and ChromaDB for persistence, following the Open/Closed principle.
+
+\subsection{RAG Module}
+
+The RAG module (\texttt{src/rag/}) connects the retrieval pipeline to Ollama (Llama 3.2). It includes a domain-specific prompt template, citation extractor, and Pydantic-validated output parser. Five anti-hallucination mechanisms are applied: context length limits (\texttt{max\_doc\_content\_length=1000}), citation validation, temperature control ($T=0.7$), token limits, and explicit refusal instructions for out-of-context questions.
+
+\subsection{Ranking}
+
+The ranking module (\texttt{src/ranking/ranking.py}) implements a multi-signal scoring function:
+
+$$\text{score} = 0.55 \cdot s_\text{LSI} + 0.25 \cdot s_\text{vector} + 0.10 \cdot s_\text{freshness} + 0.10 \cdot s_\text{popularity}$$
+
+A type boost multiplier is applied for tutorials and documentation content.
+
+\subsection{Web Search}
+
+The web search module (\texttt{src/sri/web\_search/}) uses DuckDuckGo via \texttt{duckduckgo-search}. Insufficiency is declared when result count $< 3$, average score $< 0.55$, or keyword overlap is insufficient. Web results are normalized to the unified schema and persisted for future sessions.
+
+\subsection{Visual Interface}
+
+The Gradio interface (\texttt{ui/}) exposes four tabs: Search, Configuration, Evaluation, and System Status. Detailed description in Section~7.
+
+\subsection{Evaluation Module}
+
+The evaluation module (\texttt{src/evaluation/evaluation.py}) implements MAP, MRR, NDCG@5, P@5, and R@10. It accepts a JSON test specification and computes aggregate and per-query metrics.
+
+\section{Justification of Optional Modules}
+
+\textbf{Web Search Augmentation}: The Technology and Software domain evolves rapidly; local corpora become stale within weeks. Automatic web search ensures current information about new releases and security advisories.
+
+\textbf{Multi-Signal Ranking}: Simple relevance scores do not capture document authority. A RealPython tutorial with 10,000 views is more likely authoritative than an obscure post with similar LSI score. Freshness and popularity signals improve ranking quality.
+
+\textbf{Evaluation Module}: MAP, MRR, and NDCG provide complementary views of ranking quality, enabling principled measurement of parameter changes (e.g., $k$ in LSI, ranking weights).
+
+\section{Visual Interface Design}
+
+Gradio was chosen for native Python integration, rapid prototyping capability, and built-in streaming support. The four-tab layout follows progressive disclosure: (1) \textbf{Search} --- text input, Search/Clear buttons, results panel, RAG answer with citations; (2) \textbf{Configuration} --- parameters grouped by concern (Query Parameters, RAG Configuration, Crawler Configuration, Database Management); (3) \textbf{Evaluation} --- default test execution and custom test designer; (4) \textbf{System Status} --- real-time diagnostics for database, crawlers, and LLM. Results are ordered by multi-signal ranking score, with local results preceding web-augmented results.
+
+\section{Evaluation Results}
+
+\begin{table}[h]
+\caption{Evaluation metrics on test query set ($n=5$ queries)}
+\centering
+\begin{tabular}{lr}
+\hline
+\textbf{Metric} & \textbf{Value} \\
+\hline
+MAP (Mean Average Precision) & 0.6234 \\
+MRR (Mean Reciprocal Rank) & 0.7145 \\
+NDCG@5 & 0.6521 \\
+P@5 (Precision at 5) & 0.52 \\
+R@10 (Recall at 10) & 0.675 \\
+\hline
+\end{tabular}
+\end{table}
+
+MRR of 0.7145 indicates the first relevant document appears on average at rank 1.4. MAP of 0.6234 confirms relevant documents are concentrated in upper ranked positions.
+
+\section{Critical Analysis}
+
+\subsection{Strengths}
+
+The modular architecture with a clean \texttt{MainOrchestrator} interface enables independent development and testing. The dual-backend vector store provides graceful degradation when ChromaDB is unavailable. The anti-hallucination mechanisms produce factually grounded answers, critical for a technical domain where incorrect information has practical consequences. Ethical crawling (robots.txt compliance, rate limiting) ensures sustainable data acquisition.
+
+\subsection{Insufficiencies and Proposed Solutions}
+
+\begin{itemize}
+\item \textbf{Corpus imbalance} (RealPython: 50.9\%): Add crawlers for Go Blog, Rust Blog, and Java-focused platforms.
+\item \textbf{LSI hyperparameter $k=100$ not tuned}: Apply Bayesian optimization over $k \in \{50, 100, 200, 300\}$ selecting by MAP.
+\item \textbf{No hybrid retrieval}: Implement Reciprocal Rank Fusion between LSI and BM25.
+\item \textbf{Ollama deployment dependency}: Package as self-contained Docker image with Ollama bundled.
+\item \textbf{Synthetic evaluation ground truth}: Conduct manual relevance judgments for a representative query sample.
+\item \textbf{HackerNews HTML entity issues}: Apply \texttt{html.unescape()} and BeautifulSoup's \texttt{get\_text()} before storing content.
+\end{itemize}
+
+\section{Conclusions}
+
+This paper presented an end-to-end IRS for the Technology and Software domain integrating LSI-based semantic retrieval, web search augmentation, and a RAG pipeline with a local LLM. The system achieves competitive metrics (MAP 0.6234, MRR 0.7145) and provides a clean modular architecture supporting future extension. The identified deficiencies constitute a concrete roadmap for improvement.
+
+\begin{thebibliography}{9}
+
+\bibitem{deerwester1990}
+Deerwester, S., Dumais, S.T., Furnas, G.W., Landauer, T.K., Harshman, R.:
+Indexing by latent semantic analysis.
+J. Am. Soc. Inf. Sci. 41(6), 391--407 (1990)
+
+\bibitem{hofmann1999}
+Hofmann, T.:
+Probabilistic latent semantic indexing.
+In: Proceedings of SIGIR 1999, pp. 50--57. ACM, New York (1999)
+
+\bibitem{blei2003}
+Blei, D.M., Ng, A.Y., Jordan, M.I.:
+Latent Dirichlet allocation.
+J. Mach. Learn. Res. 3, 993--1022 (2003)
+
+\bibitem{lewis2020}
+Lewis, P., et al.:
+Retrieval-augmented generation for knowledge-intensive NLP tasks.
+In: Advances in NeurIPS, vol. 33, pp. 9459--9474 (2020)
+
+\bibitem{nogueira2019}
+Nogueira, R., Cho, K.:
+Passage re-ranking with BERT.
+arXiv:1901.04085 (2019)
+
+\bibitem{karpukhin2020}
+Karpukhin, V., et al.:
+Dense passage retrieval for open-domain question answering.
+In: Proceedings of EMNLP 2020, pp. 6769--6781 (2020)
+
+\bibitem{manning2008}
+Manning, C.D., Raghavan, P., Sch\"utze, H.:
+Introduction to Information Retrieval.
+Cambridge University Press (2008)
+
+\bibitem{sklearn}
+Pedregosa, F., et al.:
+Scikit-learn: Machine learning in Python.
+J. Mach. Learn. Res. 12, 2825--2830 (2011)
+
+\bibitem{gradio}
+Abid, A., et al.:
+Gradio: Hassle-free sharing and testing of ML models in the wild.
+arXiv:2106.05432 (2021)
+
+\end{thebibliography}
+
+\end{document}
