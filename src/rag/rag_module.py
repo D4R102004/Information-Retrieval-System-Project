@@ -13,7 +13,7 @@ from .llm_provider import LLMProvider
 from .prompt_templates import PromptTemplateFactory
 from .citations import CitationExtractor
 from .output_parser import OutputParser, RAGResponse
-from .config import RAGConfig
+from .config import rag_config
 
 logger = logging.getLogger(__name__)
 
@@ -143,9 +143,8 @@ class RAGModule:
 
             # Step 2: Generate LLM response
             llm_start = time.time()
-            config = RAGConfig()
-            temperature = config["rag_temperature"] if temperature is None else temperature
-            max_tokens = config["rag_max_tokens"] if max_tokens is None else max_tokens
+            temperature = rag_config["rag_temperature"] if temperature is None else temperature
+            max_tokens = rag_config["rag_max_tokens"] if max_tokens is None else max_tokens
             raw_response = self.llm.generate(
                 prompt=prompt,
                 temperature=temperature,

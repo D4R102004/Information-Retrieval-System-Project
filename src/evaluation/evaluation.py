@@ -21,7 +21,10 @@ Referencia:
 import math
 import json
 import os
+import logging
 from typing import List, Dict, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +293,7 @@ class Evaluator:
                     "aggregate": agg,
                     "per_query": self.results,
                 }, f, ensure_ascii=False, indent=2)
-            print(f"[Evaluador] Reporte JSON guardado: {output_path}")
+            logger.debug(f"[Evaluador] Reporte JSON guardado: {output_path}")
 
         return report_str
 
@@ -308,4 +311,4 @@ class Evaluator:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(queries, f, ensure_ascii=False, indent=2)
-        print(f"[Evaluador] Test queries guardadas: {path}")
+        logger.debug(f"[Evaluador] Test queries guardadas: {path}")

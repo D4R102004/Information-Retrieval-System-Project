@@ -9,7 +9,7 @@ en el dominio de Tecnología y Software.
 import math
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
-from rag.config import config as rag_config # Para obtener la longitud máxima de contenido (en caracteres)
+from rag.config import rag_config # Para obtener la longitud máxima de contenido (en caracteres)
 
 
 # ---------------------------------------------------------------------------

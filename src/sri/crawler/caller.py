@@ -12,7 +12,7 @@ Responsibilities:
   4. Provide detailed reports on crawling progress and errors
 """
 
-import json
+import json, os
 import logging
 import re
 import time
@@ -169,7 +169,8 @@ class CrawlerCaller:
                     logger.info(f"  {spider_name}: {count} articles saved")
 
                     # Save last crawled time
-                    with open(f"{self.raw_dir}/{spider_name.lower()}/_metadata.txt", "a", encoding = "utf-8") as metadata:
+                    path = os.path.join(self.raw_dir, spider_name.lower(), "_metadata.txt")
+                    with open(path, "a", encoding = "utf-8") as metadata:
                         metadata.write(f"{datetime.now().isoformat()} {count}")
 
                 except Exception as e:
@@ -433,7 +434,7 @@ class CrawlerCaller:
             str: date of last crawl event in ISO format.
         """
         
-        path = f"{self.raw_dir}/{source}/_metadata.txt"
+        path = os.path.join(self.raw_dir, source, "_metadata.txt")
         try:
             with open(path, "r", encoding="utf-8") as metadata:
                 last_entry = metadata.readlines()[-1].strip()

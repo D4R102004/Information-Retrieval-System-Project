@@ -14,9 +14,11 @@ import os
 import re
 import json
 import math
-import string
 from collections import defaultdict
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +160,7 @@ class InvertedIndex:
                 tf_log = 1 + math.log(tf) if tf > 0 else 0
                 posting["tfidf"] = round(tf_log * idf, 4)
 
-        print(f"[Índice] Construido: {self.num_docs} docs, "
+        logger.debug(f"[Índice] Construido: {self.num_docs} docs, "
               f"{len(self.index)} términos únicos.")
 
     def add_document(self, doc: Dict) -> None:
@@ -271,13 +273,13 @@ class InvertedIndex:
         out_path = os.path.join(path, "inverted_index.json")
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False)
-        print(f"[Índice] Guardado: {out_path} "
+        logger.debug(f"[Índice] Guardado: {out_path} "
               f"({os.path.getsize(out_path) / 1024:.1f} KB)")
 
     def load(self, path: str) -> None:
         idx_path = os.path.join(path, "inverted_index.json")
         if not os.path.exists(idx_path):
-            print("[Índice] No existe índice previo.")
+            logger.debug("[Índice] No existe índice previo.")
             return
         with open(idx_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -285,5 +287,5 @@ class InvertedIndex:
         self.doc_lengths  = data["doc_lengths"]
         self.doc_metadata = data["doc_metadata"]
         self.index        = data["index"]
-        print(f"[Índice] Cargado: {self.num_docs} docs, "
+        logger.debug(f"[Índice] Cargado: {self.num_docs} docs, "
               f"{len(self.index)} términos.")

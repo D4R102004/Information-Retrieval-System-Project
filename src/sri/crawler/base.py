@@ -13,6 +13,9 @@ import httpx
 
 from sri.crawler.items import ArticleItem
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class BaseSpider(ABC):
     """Abstract base class for all data acquisition spiders.
@@ -108,7 +111,7 @@ class ApiSpider(BaseSpider):
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as error:
-            print(f"[{self.__class__.__name__}] HTTP error fetching {url}: {error}")
+            logger.debug(f"[{self.__class__.__name__}] HTTP error fetching {url}: {error}")
             return None
 
     def fetch_articles(self) -> list[ArticleItem]:

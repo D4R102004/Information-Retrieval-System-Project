@@ -23,6 +23,9 @@ from ranking.ranking import RankingEngine
 from retrieval.lsi_model import LSIModel
 from retrieval.vector_store import _CHROMA_AVAILABLE, VectorStore
 
+import logging
+logger = logging.getLogger(__name__)
+
 DATA_DIR = "data"
 INDEX_DIR = os.path.join(DATA_DIR, "index")
 MODEL_DIR = os.path.join(DATA_DIR, "models")
@@ -46,9 +49,9 @@ class SRIPipeline:
 
         # Informa qué backend se está usando al arrancar
         if _CHROMA_AVAILABLE:
-            print("[Pipeline] ChromaDB available -- using ChromaDB backend [OK]")
+            logger.debug("[Pipeline] ChromaDB available -- using ChromaDB backend [OK]")
         else:
-            print("[Pipeline] ChromaDB not installed -- using local backend [OK]")
+            logger.debug("[Pipeline] ChromaDB not installed -- using local backend [OK]")
 
         # Módulos
         self.indexer = InvertedIndex(use_stemming=True)
@@ -79,7 +82,7 @@ class SRIPipeline:
             documents: Lista de dicts {"id","title","content","url","tags",...}
             save:      Si True, persiste todo a disco.
         """
-        print(f"\n[Pipeline] Indexando {len(documents)} documentos...")
+        logger.debug(f"\n[Pipeline] Indexando {len(documents)} documentos...")
 
         # 1. Índice invertido
         self.indexer.build(documents)
@@ -95,7 +98,7 @@ class SRIPipeline:
 
         # Estadísticas
         stats = self.indexer.stats()
-        print(
+        logger.debug(
             f"[Pipeline] Vocabulario: {stats['vocab_size']} términos | "
             f"Longitud media doc: {stats['avg_doc_len']:.0f} tokens"
         )
@@ -104,7 +107,7 @@ class SRIPipeline:
         """Agrega un documento al sistema sin reentrenar LSI."""
         self.indexer.add_document(doc)
         self.vstore.add([doc])
-        print(f"[Pipeline] Doc '{doc.get('id')}' agregado al índice y vector store.")
+        logger.debug(f"[Pipeline] Doc '{doc.get('id')}' agregado al índice y vector store.")
 
     # ------------------------------------------------------------------
     # Búsqueda
@@ -180,7 +183,7 @@ class SRIPipeline:
             retrieval_fn=lambda q: self.search_ids(q, top_k=10),
         )
         report = self.evaluator.report(output_path=output_path)
-        print(report)
+        logger.debug(report)
         return results
 
     # ------------------------------------------------------------------
@@ -195,7 +198,7 @@ class SRIPipeline:
         # ChromaDB persiste solo; el backend propio guarda JSON
         if not _CHROMA_AVAILABLE:
             self.vstore.save()
-        print("[Pipeline] Todos los módulos guardados.")
+        logger.debug("[Pipeline] Todos los módulos guardados.")
 
     def _load_all(self) -> None:
         self.indexer.load(INDEX_DIR)

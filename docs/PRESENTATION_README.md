@@ -200,7 +200,7 @@ netstat -ano | findstr :7860  # Windows
 **Síntoma:** Python process muere durante indexación
 **Solución:** Reducir corpus a 500 docs. Editar `src/main_orchestator.py`:
 ```python
-MAX_ARTICLES = 500  # en lugar de 1405
+MAX_ARTICLES_PER_SPIDER = 500  # en lugar de 1405
 ```
 
 ---

@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 # Local
 from sri.crawler.base import BaseSpider
 from sri.crawler.items import ArticleItem
-from sri.crawler.settings import CrawlerSettings
+from sri.crawler.settings import crawler_settings
 
 
 class TheVergeSpider(BaseSpider):
@@ -35,7 +35,7 @@ class TheVergeSpider(BaseSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
+        max_articles: int = crawler_settings["MAX_ARTICLES_PER_SPIDER"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -45,7 +45,7 @@ class TheVergeSpider(BaseSpider):
         super().__init__(max_articles)
 
         self._client = httpx.Client(
-            timeout=CrawlerSettings()["HTTP_TIMEOUT"],
+            timeout=crawler_settings["HTTP_TIMEOUT"],
         )
 
     def fetch_articles(self) -> list[ArticleItem]:
@@ -71,7 +71,7 @@ class TheVergeSpider(BaseSpider):
         collected: list[ArticleItem] = []
 
         response = self._client.get(
-            CrawlerSettings()["THE_VERGE_FEED"],
+            crawler_settings["THE_VERGE_FEED"],
         )
 
         soup = BeautifulSoup(response.text, "xml")

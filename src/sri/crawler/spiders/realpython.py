@@ -16,8 +16,10 @@ from bs4 import BeautifulSoup
 # Local
 from sri.crawler.base import BaseSpider
 from sri.crawler.items import ArticleItem
-from sri.crawler.settings import CrawlerSettings
+from sri.crawler.settings import crawler_settings
 
+import logging
+logger = logging.getLogger(__name__)
 
 class RealPythonSpider(BaseSpider):
     """Spider that scrapes articles from Real Python using its sitemap.
@@ -36,10 +38,10 @@ class RealPythonSpider(BaseSpider):
             max_articles: Maximum number of articles to fetch.
         """
         super().__init__(max_articles)
-        self._client = httpx.Client(timeout=CrawlerSettings()["HTTP_SCRAPE_TIMEOUT"])
+        self._client = httpx.Client(timeout=crawler_settings["HTTP_SCRAPE_TIMEOUT"])
 
-        self._base_url = CrawlerSettings()["REALPYTHON_BASE_URL"]
-        self._sitemap_url = CrawlerSettings()["REALPYTHON_SITEMAP_URL"]
+        self._base_url = crawler_settings["REALPYTHON_BASE_URL"]
+        self._sitemap_url = crawler_settings["REALPYTHON_SITEMAP_URL"]
 
     def fetch_articles(self) -> list[ArticleItem]:
         """Fetch articles from Real Python sitemap and scrape content."""
@@ -74,7 +76,7 @@ class RealPythonSpider(BaseSpider):
                 time.sleep(1)
 
             except Exception as error:
-                print(f"[RealPythonSpider] Failed to scrape {url}: {error}")
+                logger.debug(f"[RealPythonSpider] Failed to scrape {url}: {error}")
 
         return collected
 

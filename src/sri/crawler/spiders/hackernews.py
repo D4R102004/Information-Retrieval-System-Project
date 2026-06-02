@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
-from sri.crawler.settings import CrawlerSettings
+from sri.crawler.settings import crawler_settings
 
 
 class HackerNewsSpider(ApiSpider):
@@ -30,8 +30,8 @@ class HackerNewsSpider(ApiSpider):
 
     def __init__(
         self,
-        max_articles: int = CrawlerSettings()["MAX_ARTICLES"],
-        per_page: int = CrawlerSettings()["PER_PAGE"],
+        max_articles: int = crawler_settings["MAX_ARTICLES_PER_SPIDER"],
+        per_page: int = crawler_settings["PER_PAGE"],
     ) -> None:
         """Initialise the spider with fetch limits.
 
@@ -41,7 +41,7 @@ class HackerNewsSpider(ApiSpider):
         """
 
         super().__init__(max_articles=max_articles)
-        self.per_page = min(per_page, CrawlerSettings()["PER_PAGE"])
+        self.per_page = min(per_page, crawler_settings["PER_PAGE"])
 
     def _search_terms(self) -> list[str]:
         """Return Algolia search queries for the technology domain.
@@ -50,7 +50,7 @@ class HackerNewsSpider(ApiSpider):
             List of query strings to search for articles.
         """
 
-        return CrawlerSettings()["HN_SEARCH_TERMS"]
+        return crawler_settings["HN_SEARCH_TERMS"]
 
     def _fetch_page(self, term: str, page: int) -> list[dict]:
         """Fetch a single page of articles from the Algolia API.
@@ -71,7 +71,7 @@ class HackerNewsSpider(ApiSpider):
         }
 
         result = self._get_json(
-            CrawlerSettings()["HN_API_URL"],
+            crawler_settings["HN_API_URL"],
             params=params,
         )
 

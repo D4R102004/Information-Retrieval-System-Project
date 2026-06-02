@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ConfigDict
 import logging
 
 from .citations import CitationExtractor, Citation
-from .config import config as rag_config
+from .config import rag_config
 
 logger = logging.getLogger(__name__)
 
