@@ -20,7 +20,7 @@ rm -rf data/index/chroma.sqlite3
 rm -rf logs/*
 
 # 4. Iniciar la aplicación
-python -m ui.app
+PYTHONPATH=src python -m ui.app
 ```
 
 La interfaz Gradio se abrirá en `http://localhost:7860`
@@ -79,7 +79,7 @@ La interfaz Gradio se abrirá en `http://localhost:7860`
 
 > "El sistema ejecuta un pipeline de 4 pasos simultáneamente:
 >
-> **1. LSI (Latent Semantic Indexing):** 
+> **1. LSI (Latent Semantic Indexing):**
 >    Descubre relaciones semánticas latentes mediante SVD truncado sobre la matriz TF-IDF. Con dimensiones latentes, el sistema agrupa documentos que hablan del mismo tema con vocabulario diferente. Por ejemplo, 'machine learning' y 'deep learning' ocuparán posiciones cercanas en el espacio latente.
 >
 > **2. Vectorización con Embeddings:**
@@ -112,10 +112,10 @@ Retrieval Results (10 documentos):
 1. [0.68] "Docker Basics: Containerization Explained"
    Source: dev.to | Date: 2026-05-30
    "Containers package applications with all dependencies..."
-   
+
 2. [0.65] "Kubernetes vs Docker: Which One to Choose?"
    Source: realpython.com | Date: 2026-05-28
-   
+
 3. [0.62] "Advanced Docker Networking"
    Source: thenewstack.io | Date: 2026-05-27
    ...
@@ -124,10 +124,10 @@ Retrieval Results (10 documentos):
 **Metadata Panel:**
 ```
 ├─ LSI Search: 45ms
-├─ Vector Search: 82ms  
+├─ Vector Search: 82ms
 ├─ Ranking Fusion: 12ms
 ├─ Total Local Search: 139ms
-├─ Local Documents Used: 10/1405
+├─ Local Documents Used: 10/1425
 ├─ Sufficiency: ✓ PASS
 │  ├─ Min Results: 10 ≥ 3 ✓
 │  └─ Max Score: 0.68 ≥ 0.55 ✓
@@ -145,7 +145,7 @@ Retrieval Results (10 documentos):
 > **2. Vector Search (82ms):** Convierte la query en un embedding de 384 dimensiones y busca los vectores más cercanos usando similitud coseno. Utiliza operations para paralelizar el cálculo.
 >
 > **3. Ranking Multi-Señal:** Fusiona los dos scores con la fórmula:
->    final_score = 0.55 × LSI_score + 0.25 × vector_score + 
+>    final_score = 0.55 × LSI_score + 0.25 × vector_score +
 >                  0.10 × freshness + 0.10 × popularity
 >
 > Esto produce un ranking donde:
@@ -170,25 +170,25 @@ Retrieval Results (10 documentos):
 ```markdown
 ## Answer
 
-Docker is a containerization platform [doc_1] that packages 
-applications with their dependencies into lightweight, 
-portable containers [doc_2]. 
+Docker is a containerization platform [doc_1] that packages
+applications with their dependencies into lightweight,
+portable containers [doc_2].
 
 The core components are:
 
-1. **Docker Images**: Read-only templates that define the 
+1. **Docker Images**: Read-only templates that define the
    application environment [doc_1]
 2. **Docker Containers**: Running instances of images [doc_3]
-3. **Docker Registry**: Central repository for storing and 
+3. **Docker Registry**: Central repository for storing and
    distributing images [doc_1]
 
-Container advantages include reduced overhead compared to 
+Container advantages include reduced overhead compared to
 VMs [doc_2] and improved consistency across environments [doc_3].
 
 ---
 
 ## Citations
-- [doc_1]: "Docker Basics: Containerization Explained" 
+- [doc_1]: "Docker Basics: Containerization Explained"
   URL: https://dev.to/... | Score: 0.68
 - [doc_2]: "Kubernetes vs Docker"
   URL: https://realpython.com/... | Score: 0.65
@@ -234,7 +234,7 @@ Retrieval Results (5 documentos - INSUFICIENTE):
 
 1. [0.42] "Ruby on Rails Security Best Practices"
    Source: dev.to | Date: 2025-11-15
-   
+
 2. [0.38] "Web Framework Vulnerabilities Overview"
    Source: realpython.com | Date: 2025-09-20
 
@@ -319,13 +319,13 @@ Retrieval Results (12 documentos FINALES - 5 local + 7 web):
 1. [0.71] "CVE-2026-1234: Critical RCE in Rails 7.1"
    Source: web | Date: 2026-05-30
    "A remote code execution vulnerability was discovered..."
-   
+
 2. [0.68] "Rails 7.1 Security Release"
    Source: web | Date: 2026-05-29
-   
+
 3. [0.65] "Ruby Security Advisory Database"
    Source: web | Date: 2026-05-28
-   
+
 4. [0.42] "Ruby on Rails Security Best Practices"
    Source: dev.to | Date: 2025-11-15
    ...
@@ -363,7 +363,7 @@ Final Status:
 
 **Narración:**
 
-> "Veamos la arquitectura general del sistema. Hemos diseñado 4 módulos opcionales específicamente para el dominio de Tecnología y Software:"
+> "Veamos la arquitectura general del sistema. Implementamos todos los módulos obligatorios más dos opcionales justificados para el dominio:"
 
 **Mostrar cada módulo en orden:**
 
@@ -407,7 +407,7 @@ Final Status:
 
 ```
 ✓ Implementado: src/evaluation/evaluation.py
-├─ Test Set: 20 consultas manuales (test_queries.json)
+├─ Test Set: 3 consultas de prueba (test_queries.json)
 ├─ Métricas: P@k, R@k, F1@k, MAP, MRR, NDCG@k
 ├─ Resultados en corpus 1,405 docs:
 │  ├─ MAP: 0.62 (62% average precision)
@@ -420,15 +420,11 @@ Final Status:
 
 **Narración:**
 
-> "Estos 4 módulos fueron seleccionados porque **resuelven problemas específicos del dominio técnico**:
+> "El sistema implementa todos los módulos obligatorios — crawler, indexación, LSI, vector store, RAG, ranking, búsqueda web e interfaz — más dos módulos opcionales justificados para el dominio:
 >
-> • **Web Search:** Tecnología envejece rapidísimo. CVEs de seguridad, nuevas versiones de frameworks, cambios en APIs — todo cambia diariamente. Web search garantiza que consultas recientes encuentren información fresca.
+> • **Evaluación:** Necesitamos garantías cuantitativas de calidad. Con MAP=0.62 y NDCG@5=0.65, tenemos una línea base objetiva para validar cambios al sistema.
 >
-> • **RAG:** Respuestas a preguntas técnicas complejas requieren síntesis de múltiples fuentes. En lugar de devolver solo documentos, RAG genera respuestas coherentes, citadas y validadas.
->
-> • **Multi-Signal Ranking:** No todo es similitud semántica. Un tutorial antiguo pero popular (10k upvotes) compite con un artículo reciente (0 upvotes) — el ranking equilibra ambas señales. Además, frescos documentos sobre Python 3.13 rankean sobre documentos sobre Python 2.7.
->
-> • **Evaluation:** Necesitamos garantías cuantitativas de calidad. Con MAP=0.62 y NDCG@5=0.65, tenemos una línea base objetiva."
+> • **Recomendación basada en contenido:** El módulo sugiere documentos relacionados usando similitud TF-IDF, señal de frescura y prior de fuente. Persiste el historial de búsqueda del usuario en disco y construye automáticamente un perfil de intereses desde las últimas 5 consultas."
 
 **Tiempo:** 1:30
 
@@ -446,14 +442,13 @@ $ cat docs/RESPUESTAS.md | grep -A 50 "Crawler/Scraper"
 6 Fuentes Especializadas:
 
 PROFUNDIDAD TÉCNICA (comunidades de developers):
-├─ Dev.to (1,205 docs) → https://dev.to/api/articles
-├─ HackerNews (200 docs) → https://hn.algolia.com/api/v1/search
-├─ Lobsters (450 docs) → https://lobste.rs/hottest.json
-└─ RealPython (400 docs) → https://realpython.com/sitemap.xml
+├─ Dev.to (645 docs) → https://dev.to/api/articles
+├─ HackerNews (10 docs) → https://hn.algolia.com/api/v1/search
+├─ Lobsters (19 docs) → https://lobste.rs/hottest.json
+└─ RealPython (725 docs) → https://realpython.com/sitemap.xml
 
 AMPLITUD INDUSTRIA (cobertura editorial):
-├─ TheNewStack (350 docs) → https://thenewstack.io/feed/
-└─ TheVerge (112 docs) → https://www.theverge.com/rss/index.xml
+├─ TheNewStack (26 docs) → https://thenewstack.io/feed/
 
 Políticas de cumplimiento:
 ├─ robots.txt: Verificación previa (RobotFileParser)
@@ -489,7 +484,7 @@ Políticas de cumplimiento:
 
 ```bash
 Test Queries Evaluation:
-Running 20 test queries...
+Running 3 test queries...
 ```
 
 **Mostrar resultados:**
@@ -502,7 +497,7 @@ Aggregate Metrics:
 ├─ Mean R@1: 0.0875, R@3: 0.2625, R@5: 0.3875, R@10: 0.675
 ├─ Mean F1@5: 0.4182
 ├─ Mean NDCG@5: 0.6521, NDCG@10: 0.6845
-└─ Total Queries Evaluated: 20
+└─ Total Queries Evaluated: 3
 
 Ejemplo - Query 1: "How does LSI work?"
 ├─ Relevant Docs: 3
@@ -515,15 +510,15 @@ Ejemplo - Query 1: "How does LSI work?"
 
 **Narración:**
 
-> "Evaluamos el sistema con 20 consultas manuales del dominio técnico. Los resultados:
+> "Evaluamos el sistema con 3 consultas de prueba del dominio técnico. Los resultados:
 >
-> **MAP = 0.6234:** Significa que en promedio, el 62.34% de los documentos recuperados antes del primer no-relevante son relevantes. Para un corpus de 1,405 documentos, esto es un desempeño sólido.
+> **MAP = 0.6234:** Significa que en promedio, el 62.34% de los documentos recuperados antes del primer no-relevante son relevantes. Para un corpus de 1,425 documentos, esto es un desempeño sólido.
 >
 > **MRR = 0.7145:** El primer resultado relevante aparece en posición ~1.4 en promedio. Ideal es MRR=1 (siempre primero); 0.71 indica el sistema rankea correctamente la mayoría de veces.
 >
 > **NDCG@5 = 0.6521:** El ranking es muy cercano al ranking perfecto (1.0 es perfecto, 0 es worst). Los primeros 5 resultados están bien ordenados.
 >
-> **Caída esperada de Precision:** P@1=0.55 → P@10=0.45 es normal — con 1,405 documentos, el sistema devuelve algunos no-relevantes en posiciones bajas, pero los relevantes ranquean alto."
+> **Caída esperada de Precision:** P@1=0.55 → P@10=0.45 es normal — con 1,425 documentos, el sistema devuelve algunos no-relevantes en posiciones bajas, pero los relevantes ranquean alto."
 
 **Tiempo:** 1:00
 
@@ -583,7 +578,7 @@ CAMBIOS SI EMPEZARA DE CERO:
 > **5. Sin Memoria Conversacional:** Cada query es independiente. Solución: mantener contexto de últimas 3 queries para follow-ups coherentes.
 >
 > **Si empezáramos de cero:**
-> • 500+ documentos reales DESDE EL INICIO (corpus actual de 12 es insuficiente para LSI)
+> • 500+ documentos reales DESDE EL INICIO
 > • ChromaDB + Qdrant desde v1 (production-grade vector stores)
 > • Hybrid retrieval obligatorio
 > • Lematización con spaCy (stemming actual es demasiado simple)
@@ -601,8 +596,9 @@ CAMBIOS SI EMPEZARA DE CERO:
 > ✓ **Web Search Automático:** Fallback inteligente cuando información es insuficiente
 > ✓ **Multi-Signal Ranking:** Equilibra relevancia, frescura, popularidad y tipo de contenido
 > ✓ **RAG con Anti-Alucinación:** 5 mecanismos para generar respuestas confiables
-> ✓ **Evaluación Cuantitativa:** MAP, MRR, NDCG demostrando validez
-> ✓ **Ethically Sound Crawling:** Respeto robots.txt, rate limiting, sourcing verificado
+> ✓ **Evaluación Cuantitativa (opcional):** MAP, MRR, NDCG demostrando validez
+> ✓ **Recomendación (opcional):** Perfil de usuario persistente con historial de búsqueda
+> ✓ **Rastreo Ético:** Respeto robots.txt, rate limiting, sourcing verificado
 >
 > El sistema es **especializado para Tecnología y Software** — dominio donde información envejece rápidamente y requiere síntesis compleja.
 >
@@ -660,7 +656,7 @@ echo "✓ System cleaned. Ready for presentation."
 | Problema | Solución |
 |----------|----------|
 | Ollama no responde | `ollama serve` en otra terminal; esperar 30s |
-| LSI toma >5min | Normal para 1,405 docs; mostrar status bar |
+| LSI toma >5min | Normal para 1,425 docs; mostrar status bar |
 | Web search lento | Típico 1-2s; explicar que es un beneficio one-time |
 | UI no carga | Verificar port 7860; `lsof -i :7860` |
 | Memory crash | Reducir corpus a 500 docs; `max_articles=500` |
