@@ -435,7 +435,7 @@ class MySpider(scrapy.Spider):
     name = "myspider"
     allowed_domains = ["example.com"]
     start_urls = ["https://example.com"]
-    
+
     def parse(self, response):
         # Your scraping logic
         yield {...}
@@ -537,6 +537,81 @@ docker-compose up
 # Stop
 docker-compose down
 ```
+
+---
+
+---
+
+## Visual Interface (Gradio UI)
+
+The system includes a full graphical interface accessible from the browser.
+
+### Launching the UI
+
+Launch with:
+  source .venv/bin/activate
+  PYTHONPATH=src python -m ui.app
+
+Then open: http://127.0.0.1:7860
+
+---
+
+### Tab 1: Search
+
+Type your question in the Search query box and press Search.
+
+Examples:
+- What is Docker and how does it work?
+- How do I use async/await in Python?
+- Best practices for REST API design
+
+Results shown: ranked documents with source, score, URL, snippet.
+RAG answer: synthesized answer with source citations.
+Press Clear to reset.
+
+---
+
+### Tab 2: Configuration
+
+Adjust settings before searching. Press Save Query Settings to apply.
+
+Query Parameters:
+- Max Local Results (default 5): documents from local index
+- Max Web Results (default 5): documents from web fallback
+- Enable Web Search: DuckDuckGo when local is insufficient
+- Auto-reload Empty Database: run crawlers if index is empty
+
+RAG Configuration:
+- Ollama Model: llama3.2:latest
+- Temperature: 0.7
+- Max Tokens: 1024
+- Max Citations in Response: 10
+- Max Document Context Length: 1000 chars
+
+Database Management:
+- Clear All Data, Reindex Database, Reload from Crawlers, Refresh Status
+
+---
+
+### Tab 3: Evaluation
+
+1. Test Configuration - Load Default Test
+2. Run Evaluation - Run Evaluation
+3. Results - Display Results
+
+Shows: MAP, MRR, NDCG@5, P@5, R@10
+
+Custom tests: use Test Designer tab to add queries with relevant document IDs.
+
+---
+
+### Tab 4: System Status
+
+Click Refresh All Status to see:
+- Health Summary (Healthy/Degraded/Critical)
+- Database document counts
+- Crawler status per source
+- LLM Service connectivity
 
 ---
 
