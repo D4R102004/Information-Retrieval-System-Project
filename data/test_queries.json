@@ -2,7 +2,7 @@
   "test_queries": [
     {
       "query_id": "q1",
-      "query": "How to build realtime chat application",
+      "query": "Cloudflare Workers Durable Objects WebSocket rooms FluxyChat",
       "relevant": [
         "010a7286-edfa-4143-9e46-462829787546"
       ],
@@ -12,7 +12,7 @@
     },
     {
       "query_id": "q2",
-      "query": "AI portfolio assistant tools",
+      "query": "I Built an MCP Server for INDmoney Ask Claude About Your Portfolio in Plain English",
       "relevant": [
         "0133fdba-57de-465a-a29b-055328eb627f"
       ],
@@ -22,13 +22,11 @@
     },
     {
       "query_id": "q3",
-      "query": "Python implementation of AI systems",
+      "query": "NeuroDoc Broken Prototype Production Ready Async AI Documentation Engine",
       "relevant": [
-        "0133fdba-57de-465a-a29b-055328eb627f",
         "01682546-f6f0-45e1-bcfd-695225de0680"
       ],
       "grades": {
-        "0133fdba-57de-465a-a29b-055328eb627f": 2,
         "01682546-f6f0-45e1-bcfd-695225de0680": 3
       }
     }

@@ -6,7 +6,7 @@
 
 ---
 
-## RESUMEN EJECUTIVO
+## RESUMEN EJECUTIVO    
 
 Este documento responde **16 preguntas fundamentales** sobre la arquitectura, diseño e implementación de un **Sistema de Recuperación de Información con RAG** especializado en Tecnología y Software.
 

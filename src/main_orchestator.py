@@ -1124,13 +1124,18 @@ class MainOrchestator:
                 Returns:
                     Ordered list of document IDs
                 """
-                results = self._search_locally(query_text, max_results=10)
+                results = self._search_locally(query_text, max_results=50)
 
                 doc_ids = []
                 for doc in results:
-                    doc_id = doc.get("id") or doc.get("source") or doc.get("doc_id")
+                    doc_id = doc.get("doc_id") or doc.get("id") or doc.get("source")
                     if doc_id:
                         doc_ids.append(str(doc_id))
+
+                print("\n[EVALUATION DEBUG]")
+                print("Query:", query_text)
+                print("Retrieved IDs:", doc_ids)
+                print("Retrieved titles:", [doc.get("title", "") for doc in results])
 
                 return doc_ids
 
