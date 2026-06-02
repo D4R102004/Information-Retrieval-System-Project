@@ -8,6 +8,8 @@ API reference: http://hn.algolia.com/api/v1/search?tags=story&query=software
 
 import uuid
 
+from bs4 import BeautifulSoup
+
 from sri.crawler.base import ApiSpider
 from sri.crawler.items import ArticleItem
 from sri.crawler.settings import CrawlerSettings
@@ -101,8 +103,10 @@ class HackerNewsSpider(ApiSpider):
         article["title"] = raw_article.get("title", "")
         article["url"] = raw_article.get("url", "")
         article["date"] = raw_article.get("created_at", "")
-        article["content"] = raw_article.get("story_text") or raw_article.get(
-            "title", ""
+        raw_text = raw_article.get("story_text") or raw_article.get("title", "")
+        # Clean HTML tags and decode entities (e.g. &#x27; -> ')
+        article["content"] = BeautifulSoup(raw_text, "html.parser").get_text(
+            separator=" ", strip=True
         )
         article["source"] = "hackernews"
         article["tags"] = raw_article.get("_tags", [])
