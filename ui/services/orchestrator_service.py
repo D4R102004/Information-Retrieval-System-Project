@@ -140,6 +140,12 @@ class OrchestratorService:
     
     def get_last_crawled_date(self, source: str) -> str:
         return self._get_orchestrator().crawler_caller.get_last_crawled(source.lower())
+    
+    def get_setting(self, key: str) -> Any:
+        return self._get_orchestrator().get_setting(key)
+            
+    def sync_backend(self, state: dict[str, Any]):
+        return self._get_orchestrator().sync_backend(state)
 
 _ORCHESTRATOR_SERVICE: OrchestratorService | None = None
 

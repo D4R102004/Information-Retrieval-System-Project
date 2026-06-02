@@ -5,7 +5,7 @@ from __future__ import annotations
 import gradio as gr
 
 from ..services.orchestrator_service import get_orchestrator_service
-from ..state import UIState, sync_backend
+from ..state import UIState
 
 from ..config import (
     DEFAULT_AUTO_RELOAD,
@@ -101,7 +101,7 @@ def build_configuration_tab(app_state: gr.State) -> None:
                 session_state.settings["max_local_results"] = max_local
                 session_state.settings["max_web_results"] = max_web
                 session_state.settings["min_documents"] = min_docs
-                sync_backend(session_state)
+                orchestrator_service.sync_backend(session_state.settings)
                 
                 status = (
                     f"[OK] Settings saved — \n"
@@ -239,7 +239,7 @@ def build_configuration_tab(app_state: gr.State) -> None:
                 session_state.settings["rag_max_tokens"] = rag_max_tokens
                 session_state.settings["max_cites"] = max_cites
                 session_state.settings["max_context_doc_length"] = max_context_doc_length
-                sync_backend(session_state)
+                orchestrator_service.sync_backend(session_state.settings)
                 
                 status = (
                     f"[OK] Settings saved — \n"
@@ -294,7 +294,7 @@ def build_configuration_tab(app_state: gr.State) -> None:
                 """Persist query settings into session state for use by backend."""
                 session_state.settings["max_articles_per_spider"] = max_articles_per_spider
                 session_state.settings["force_recrawl"] = force_recrawl
-                sync_backend(session_state)
+                orchestrator_service.sync_backend(session_state.settings)
                 
                 status = (
                     f"[OK] Settings saved — \n"
