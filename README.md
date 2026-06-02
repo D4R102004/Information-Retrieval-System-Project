@@ -14,6 +14,7 @@ This project implements a sophisticated information retrieval system that combin
 - ✅ **Comprehensive Evaluation**: IR metrics (MAP, MRR, NDCG, Precision, Recall)
 - 🎯 **Insufficiency Detection**: Quantity, quality, and semantic overlap criteria
 - 📚 **Full Citation Tracking**: Automatic extraction and formatting of citations
+- ⭐ **Recommendation Module**: Content-based recommendations and automatic personalization from the latest user searches
 
 ---
 
@@ -28,10 +29,11 @@ This project implements a sophisticated information retrieval system that combin
 7. [Configuration Reference](#configuration-reference)
 8. [API Examples](#api-examples)
 9. [Evaluation System](#evaluation-system)
-10. [Troubleshooting](#troubleshooting)
-11. [Team and Acknowledgments](#team-and-acknowledgments)
-12. [Bibliography](#bibliography)
-13. [License](#license)
+10. [Recommendation System](#recommendation-system)
+11. [Troubleshooting](#troubleshooting)
+12. [Team and Acknowledgments](#team-and-acknowledgments)
+13. [Bibliography](#bibliography)
+14. [License](#license)
 
 ---
 
@@ -94,11 +96,17 @@ Information-Retrieval-System-Project/
 │   │   ├── evaluation.py             # IR metrics computation
 │   │   └── __pycache__/
 │   │
+│   ├── recommendation/               # Optional recommendation module
+│   │   ├── recommender.py            # Content-based recommendation engine
+│   │   ├── user_history.py           # Search history persistence
+│   │   └── __init__.py
+│   │
 │   ├── app/                          # Frontend application
 │   └── acquisition/                  # Placeholder for future data acquisition
 │
 ├── data/                             # Data storage
 │   ├── documents.json                # Consolidated document collection
+│   ├── user_history.json             # Local search history for automatic recommendations
 │   ├── evaluation/                   # Evaluation results
 │   ├── index/                        # Vector store and indices
 │   │   └── chroma.sqlite3            # ChromaDB persistence
@@ -119,6 +127,7 @@ Information-Retrieval-System-Project/
 ├── docs/                             # Documentation
 │   ├── ARCHITECTURE_ANALYSIS.md      # Detailed architecture analysis
 │   ├── FRONTEND_IMPLEMENTATION_PLAN.md  # Gradio interface specification
+│   ├── RECOMMENDATION_MODULE.md      # Recommendation module documentation
 │   ├── PRE_RAG_STATUS.md             # Pre-RAG implementation status
 │   └── RAG_IMPLEMENTATION_PLAN.md    # RAG implementation details
 │
@@ -1084,7 +1093,7 @@ python src/main.py --interactive
 - `docs/INDEX.md` — Documentation structure guide
 - `docs/ARCHITECTURE_ANALYSIS.md` — Technical deep-dive
 
-## Optional recommendation module
+## Recommendation System
 
 The project now includes a content-based recommendation module under `src/recommendation/`.
 It recommends documents using a hybrid score composed of:
@@ -1136,3 +1145,5 @@ orchestrator.recommend_from_history(
 In the Gradio UI, each completed Search tab query automatically refreshes the **Automatic recommendations**
 section inside the **Recommendation** tab. The user can also manually regenerate those recommendations or
 clear the stored search history from that same tab.
+
+For the complete technical documentation of this module, see `docs/RECOMMENDATION_MODULE.md`.
