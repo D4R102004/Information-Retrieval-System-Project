@@ -20,14 +20,25 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any
 
 from sri.pipeline import SRIPipeline
-from sri.crawler.caller import CrawlerCaller, clean_scraped_text
-from main_config import main_config
+try:
+    from sri.crawler.caller import CrawlerCaller, clean_scraped_text
+except ImportError as crawler_import_error:  # Crawler deps are optional for recommendation/search-only flows.
+    CrawlerCaller = None  # type: ignore[assignment]
+
+    def clean_scraped_text(value: str) -> str:
+        return value
+
+from main_config import MainConfig
 from rag.rag_module import RAGModule
 from rag.llm_provider import OllamaProvider # Change to desired LLM provider
 from rag.output_parser import RAGResponse
-from rag.config import rag_config
+from rag.config import config as rag_config
 from sri.web_search.checker import SufficiencyChecker
-from sri.web_search.searcher import WebSearcher
+try:
+    from sri.web_search.searcher import WebSearcher
+except ModuleNotFoundError:
+    WebSearcher = None  # type: ignore[assignment]
+from recommendation.recommender import ContentBasedRecommender
 
 logger = logging.getLogger(__name__)
 
@@ -50,22 +61,54 @@ class MainOrchestator:
     def __init__(self):
         """Initialize all system components."""
         self.pipeline = SRIPipeline()
-        self.llm_provider = OllamaProvider()
-        self.rag_module = RAGModule(llm=self.llm_provider)
+        # RAG is initialized lazily so search/evaluation/recommendation can run
+        # even when Ollama is not currently serving a model.
+        self.llm_provider = None
+        self.rag_module = None
         self.sufficiency_checker = SufficiencyChecker()
-        self.web_searcher = WebSearcher()
-        self.crawler_caller = CrawlerCaller()
-        self.settings = main_config
+        self.web_searcher = WebSearcher() if WebSearcher is not None else None
+        self.crawler_caller = CrawlerCaller() if CrawlerCaller is not None else None
+        self.settings = MainConfig()
         
         # Paths
         self.data_dir = Path(__file__).resolve().parent.parent / "data"
         self.documents_path = self.data_dir / "documents.json"
         self.raw_data_dir = self.data_dir / "raw"
+
+        # Optional recommendation module
+        self.recommender = ContentBasedRecommender(self.documents_path)
         
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
+
+    def _get_rag_module(self) -> RAGModule:
+        """Initialize and return the RAG module on demand."""
+        if self.rag_module is None:
+            self.llm_provider = OllamaProvider()
+            self.rag_module = RAGModule(llm=self.llm_provider)
+        return self.rag_module
+
+    def _require_crawler_caller(self):
+        """Return the crawler caller or raise a clear dependency error."""
+        if self.crawler_caller is None:
+            raise RuntimeError(
+                "Crawler functionality is unavailable because crawler dependencies "
+                "are not installed. Install project dependencies with `uv sync` or "
+                "`pip install -e .` to enable crawling/index reload features."
+            )
+        return self.crawler_caller
+
+    def _require_web_searcher(self):
+        """Return the web searcher or raise a clear dependency error."""
+        if self.web_searcher is None:
+            raise RuntimeError(
+                "Web search is unavailable because DuckDuckGo dependencies are not "
+                "installed. Install project dependencies with `uv sync` or "
+                "`pip install -e .` to enable web augmentation."
+            )
+        return self.web_searcher
 
     # ==================== DATABASE MANAGEMENT ====================
 
@@ -92,7 +135,7 @@ class MainOrchestator:
         
         try:
             if clear_raw:
-                cache_result = self.crawler_caller.clear_cached_documents()
+                cache_result = self._require_crawler_caller().clear_cached_documents()
                 self._log_step(
                     "clear_all_indices",
                     f"Cleared crawler cache: {cache_result.get('deleted_files', 0)} files"
@@ -163,7 +206,7 @@ class MainOrchestator:
             documents = []
 
             if not force_recrawl:
-                documents = self.crawler_caller.load_consolidated_documents()
+                documents = self._require_crawler_caller().load_consolidated_documents()
                 if documents:
                     self._log_step(
                         "load_documents",
@@ -172,7 +215,7 @@ class MainOrchestator:
 
             if not documents:
                 # Execute crawlers only when we have no consolidated file
-                crawl_result = self.crawler_caller.execute_full_pipeline(
+                crawl_result = self._require_crawler_caller().execute_full_pipeline(
                     force_recrawl=force_recrawl,
                     max_articles=max_articles_per_spider,
                     use_initial_corpus=use_initial_corpus
@@ -188,7 +231,7 @@ class MainOrchestator:
                         'duration_seconds': time.time() - start_time
                     }
 
-                documents = self.crawler_caller.consolidate_raw_to_documents(use_initial_corpus=use_initial_corpus)
+                documents = self._require_crawler_caller().consolidate_raw_to_documents(use_initial_corpus=use_initial_corpus)
                 self._log_step("load_documents", f"Consolidated {len(documents)} documents from raw data")
 
             if not documents:
@@ -374,7 +417,7 @@ class MainOrchestator:
             if file_count >= self.settings["min_documents"]:
                 self._log_step("reindex_database", f"Loading {file_count} documents from documents.json")
                 try:
-                    docs = self.crawler_caller.load_consolidated_documents()
+                    docs = self._require_crawler_caller().load_consolidated_documents()
                     if docs:
                         self.pipeline.index(docs)
                         doc_count = len(docs)
@@ -386,9 +429,9 @@ class MainOrchestator:
             if doc_count < self.settings["min_documents"] and raw_count + initial_corpus_count >= self.settings["min_documents"]:
                 self._log_step("reindex_database", f"Consolidating {raw_count} raw documents")
                 try:
-                    docs = self.crawler_caller.consolidate_raw_to_documents(use_initial_corpus=use_initial_corpus)
+                    docs = self._require_crawler_caller().consolidate_raw_to_documents(use_initial_corpus=use_initial_corpus)
                     if docs:
-                        self.crawler_caller.save_consolidated_documents(docs)
+                        self._require_crawler_caller().save_consolidated_documents(docs)
                         self.pipeline.index(docs)
                         doc_count = len(docs)
                         self._log_step("reindex_database", f"Consolidated and indexed {doc_count} raw documents")
@@ -682,7 +725,7 @@ class MainOrchestator:
                 for i, r in enumerate(web_results)
             ]
             try:
-                self.crawler_caller.merge_documents(web_docs)
+                self._require_crawler_caller().merge_documents(web_docs)
                 self._log_step(
                     "retrieve_documents",
                     f"Merged {len(web_docs)} web results to documents.json "
@@ -733,7 +776,7 @@ class MainOrchestator:
             if not documents:
                 return RAGResponse(answer="No relevant documents found to generate an answer.", citations=[])
 
-            rag_resp = self.rag_module.generate(query=question, documents=documents)
+            rag_resp = self._get_rag_module().generate(query=question, documents=documents)
             duration = time.time() - start
             self._log_step("augment_response", f"RAG generation completed in {duration:.2f}s")
 
@@ -886,7 +929,7 @@ class MainOrchestator:
             List of web search results
         """
         try:
-            results = self.web_searcher.search(query)[:max_results]
+            results = self._require_web_searcher().search(query)[:max_results]
             return results if results else []
         except Exception as e:
             logger.warning(f"Web search failed: {str(e)}")
@@ -953,7 +996,7 @@ class MainOrchestator:
             Total count of raw documents available for consolidation and indexing.
         """
         try:
-            return self.crawler_caller.count_raw_documents()
+            return self._require_crawler_caller().count_raw_documents()
         except Exception as e:
             logger.warning(f"Failed to count raw documents: {str(e)}")
             return 0
@@ -966,7 +1009,7 @@ class MainOrchestator:
             Total count of initial corpus documents available for consolidation and indexing.
         """
         try:
-            return self.crawler_caller.count_initial_corpus_documents()
+            return self._require_crawler_caller().count_initial_corpus_documents()
         except Exception as e:
             logger.warning(f"Failed to count initial corpus documents: {str(e)}")
             return 0
@@ -979,7 +1022,7 @@ class MainOrchestator:
             Total count of consolidated documents available for indexing.
         """
         try:
-            return self.crawler_caller.count_consolidated_documents()
+            return self._require_crawler_caller().count_consolidated_documents()
         except Exception as e:
             logger.warning(f"Failed to count consolidated documents: {str(e)}")
             return 0
@@ -1011,6 +1054,104 @@ class MainOrchestator:
             self._log_step("sync_backend", "Backend syncronization completed succesfully")
         except Exception as e:
             logger.error("Backend syncronization failed:", str(e))
+
+
+    # ==================== RECOMMENDATION ====================
+
+    def refresh_recommender(self) -> Dict[str, Any]:
+        """Reload the recommendation model from the current documents.json file."""
+        try:
+            self.recommender.load_documents()
+            return {
+                "success": True,
+                "message": f"Recommendation model refreshed with {len(self.recommender.documents)} documents",
+                "total_documents": len(self.recommender.documents),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        except Exception as e:
+            logger.error(f"Failed to refresh recommender: {e}")
+            return {
+                "success": False,
+                "message": str(e),
+                "total_documents": 0,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+    def recommend_documents(
+        self,
+        query: Optional[str] = None,
+        interests: Optional[str] = None,
+        liked_doc_ids: Optional[List[str]] = None,
+        exclude_doc_ids: Optional[List[str]] = None,
+        top_k: int = 10,
+    ) -> Dict[str, Any]:
+        """Recommend documents using content similarity, interests, and liked docs.
+
+        This method exposes the optional recommendation module through the main
+        orchestrator so the UI, CLI, or future REST API can call it without
+        depending directly on implementation details.
+        """
+        try:
+            if not self.recommender.documents:
+                self.refresh_recommender()
+            return self.recommender.recommend(
+                query=query,
+                interests=interests,
+                liked_doc_ids=liked_doc_ids or [],
+                exclude_doc_ids=exclude_doc_ids or [],
+                top_k=top_k,
+            )
+        except Exception as e:
+            logger.error(f"Recommendation failed: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "recommendations": [],
+                "metadata": {"generated_at": datetime.now(timezone.utc).isoformat()},
+            }
+
+    def recommend_similar_documents(
+        self,
+        document_id: str,
+        top_k: int = 10,
+    ) -> Dict[str, Any]:
+        """Recommend documents similar to a selected document id."""
+        try:
+            if not self.recommender.documents:
+                self.refresh_recommender()
+            return self.recommender.similar_to_document(document_id, top_k=top_k)
+        except Exception as e:
+            logger.error(f"Similar-document recommendation failed: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "recommendations": [],
+                "metadata": {"document_id": document_id},
+            }
+
+    def recommend_from_retrieval(
+        self,
+        query: str,
+        retrieved_documents: List[Dict[str, Any]],
+        top_k: int = 10,
+    ) -> Dict[str, Any]:
+        """Recommend extra documents after a normal retrieval/search operation."""
+        try:
+            if not self.recommender.documents:
+                self.refresh_recommender()
+            return self.recommender.recommend_from_search_results(
+                query=query,
+                retrieved_documents=retrieved_documents,
+                top_k=top_k,
+            )
+        except Exception as e:
+            logger.error(f"Post-retrieval recommendation failed: {e}")
+            return {
+                "status": "error",
+                "message": str(e),
+                "recommendations": [],
+                "metadata": {"query": query},
+            }
 
     # ==================== EVALUATION ====================
 

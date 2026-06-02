@@ -1083,3 +1083,32 @@ python src/main.py --interactive
 
 - `docs/INDEX.md` — Documentation structure guide
 - `docs/ARCHITECTURE_ANALYSIS.md` — Technical deep-dive
+
+## Optional recommendation module
+
+The project now includes a content-based recommendation module under `src/recommendation/`.
+It recommends documents using a hybrid score composed of:
+
+- TF-IDF content similarity over title, tags, source, and article content.
+- Optional user interests or current query text.
+- Optional liked/seed document IDs.
+- Freshness and source-prior signals.
+
+Main backend methods exposed through `MainOrchestator`:
+
+```python
+orchestrator.recommend_documents(
+    query="serverless websocket apps",
+    interests="cloud computing, javascript, APIs",
+    liked_doc_ids=["010a7286-edfa-4143-9e46-462829787546"],
+    top_k=10,
+)
+
+orchestrator.recommend_similar_documents(
+    document_id="010a7286-edfa-4143-9e46-462829787546",
+    top_k=10,
+)
+```
+
+The Gradio UI also includes a new **Recommendation** tab where the user can generate
+profile-based recommendations or find documents similar to a selected document ID.

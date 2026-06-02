@@ -132,6 +132,18 @@ class OrchestratorService:
     def evaluate_test(self, test_spec: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._get_orchestrator().evaluate_test(test_spec)
 
+    def recommend_documents(self, **kwargs: Any) -> dict[str, Any]:
+        return self._get_orchestrator().recommend_documents(**kwargs)
+
+    def recommend_similar_documents(self, document_id: str, top_k: int = 10) -> dict[str, Any]:
+        return self._get_orchestrator().recommend_similar_documents(document_id, top_k=top_k)
+
+    def recommend_from_retrieval(self, query: str, documents: list[dict[str, Any]], top_k: int = 10) -> dict[str, Any]:
+        return self._get_orchestrator().recommend_from_retrieval(query, documents, top_k=top_k)
+
+    def refresh_recommender(self) -> dict[str, Any]:
+        return self._get_orchestrator().refresh_recommender()
+
     def count_raw_documents(self, folder: str = "*") -> int:
         return self._get_orchestrator().crawler_caller.count_raw_documents(folder.lower())
     
@@ -140,12 +152,6 @@ class OrchestratorService:
     
     def get_last_crawled_date(self, source: str) -> str:
         return self._get_orchestrator().crawler_caller.get_last_crawled(source.lower())
-    
-    def get_setting(self, key: str) -> Any:
-        return self._get_orchestrator().get_setting(key)
-            
-    def sync_backend(self, state: dict[str, Any]):
-        return self._get_orchestrator().sync_backend(state)
 
 _ORCHESTRATOR_SERVICE: OrchestratorService | None = None
 

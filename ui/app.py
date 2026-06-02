@@ -18,6 +18,7 @@ from .services.search_service import (
 from .state import UIState, create_default_state
 from .tabs.configuration import build_configuration_tab
 from .tabs.evaluation import build_evaluation_tab
+from .tabs.recommendation import build_recommendation_tab
 from .tabs.status import build_status_tab
 from .utils import validate_query
 
@@ -302,6 +303,9 @@ def create_app() -> gr.Blocks:
 
             with gr.Tab("Evaluation"):
                 build_evaluation_tab()
+
+            with gr.Tab("Recommendation"):
+                build_recommendation_tab()
 
             with gr.Tab("System Status"):
                 build_status_tab()
