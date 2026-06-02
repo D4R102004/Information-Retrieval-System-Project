@@ -14,6 +14,18 @@ from ..components.charts import (
 from ..services.orchestrator_service import get_orchestrator_service
 
 
+def _load_evaluation_legend() -> str:
+    """Load the user-facing explanation for evaluation metrics."""
+    legend_path = Path(__file__).resolve().parent.parent / "content" / "evaluation_legend.md"
+    if legend_path.exists():
+        return legend_path.read_text(encoding="utf-8")
+    return (
+        "### Leyenda del módulo de Evaluación\n\n"
+        "No se pudo cargar el archivo de ayuda de métricas. "
+        "Verifica que exista `ui/content/evaluation_legend.md`."
+    )
+
+
 def build_evaluation_tab() -> None:
     """
     Build evaluation interface with test designer and metrics visualization.
@@ -27,6 +39,9 @@ def build_evaluation_tab() -> None:
         "Design custom tests or run default benchmarks. "
         "Evaluate retrieval performance with standard IR metrics."
     )
+
+    with gr.Accordion("📘 Leyenda: ¿cómo interpretar los índices de evaluación?", open=False):
+        gr.Markdown(_load_evaluation_legend())
 
     test_queries_state = gr.State(value=[])
     evaluation_result_state = gr.State(value={})
