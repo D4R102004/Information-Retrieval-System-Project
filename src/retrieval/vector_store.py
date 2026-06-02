@@ -35,6 +35,11 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+# ChromaDB can reject very large upsert/add calls.
+# Keep this below the observed Chroma max batch size (546).
+DEFAULT_CHROMA_BATCH_SIZE = 500
+
+
 class LocalEmbedder:
     """
     Embeddigs ligeros basados en TF-IDF cuando no hay modelo de lenguaje
@@ -94,11 +99,13 @@ class VectorStore:
         persist_dir: str = "data/index",
         embedding_dim: int = 256,
         use_chromadb: bool = True,
+        chroma_batch_size: int = DEFAULT_CHROMA_BATCH_SIZE,
     ):
         self.collection_name = collection_name
         self.persist_dir = persist_dir
         self.embedding_dim = embedding_dim
         self._use_chroma = use_chromadb and _CHROMA_AVAILABLE
+        self.chroma_batch_size = max(1, int(chroma_batch_size))
 
         # Embedder local (siempre disponible)
         self.embedder = LocalEmbedder(dim=embedding_dim)
@@ -127,7 +134,7 @@ class VectorStore:
             embedding_function=ef,
             metadata={"hnsw:space": "cosine"},
         )
-        logger.debug(f"[VectorDB] ChromaDB initialized -- collection: {self.collection_name}")
+        print(f"[VectorDB] ChromaDB initialized -- collection: {self.collection_name}")
 
     # ------------------------------------------------------------------
     # Operaciones CRUD
@@ -166,17 +173,58 @@ class VectorStore:
                                     if k not in ("content",)})
             self._documents.append(texts[i])
 
-        # Espejo en ChromaDB si está disponible
+        # Espejo en ChromaDB si está disponible.
+        # ChromaDB has a strict maximum batch size. With large corpora, sending
+        # all documents in one upsert can raise errors such as:
+        # "Batch size of 12084 is greater than max batch size of 546".
+        # Therefore, we upsert in safe batches of 500 by default.
         if self._use_chroma and self._chroma_collection:
-            self._chroma_collection.upsert(
-                ids=[str(d.get("id", i)) for i, d in enumerate(documents)],
+            chroma_ids = [str(d.get("id", i)) for i, d in enumerate(documents)]
+            chroma_metadatas = [
+                {k: str(v) for k, v in d.items() if k not in ("content",)}
+                for d in documents
+            ]
+            self._upsert_chroma_in_batches(
+                ids=chroma_ids,
                 documents=texts,
-                metadatas=[{k: str(v) for k, v in d.items()
-                            if k not in ("content",)} for d in documents],
+                metadatas=chroma_metadatas,
             )
 
-        logger.debug(f"[VectorDB] {len(documents)} docs agregados. "
+        print(f"[VectorDB] {len(documents)} docs agregados. "
               f"Total: {self.count()}")
+
+    def _upsert_chroma_in_batches(
+        self,
+        ids: List[str],
+        documents: List[str],
+        metadatas: List[Dict],
+    ) -> None:
+        """Upsert documents into ChromaDB using safe fixed-size batches.
+
+        ChromaDB validates the size of every upsert/add call. This helper keeps
+        each request below that limit while preserving the same public behavior
+        as a single large upsert.
+        """
+        if not ids:
+            return
+
+        batch_size = self.chroma_batch_size
+        total = len(ids)
+
+        for start in range(0, total, batch_size):
+            end = min(start + batch_size, total)
+            self._chroma_collection.upsert(
+                ids=ids[start:end],
+                documents=documents[start:end],
+                metadatas=metadatas[start:end],
+            )
+
+        if total > batch_size:
+            logger.info(
+                "[VectorDB] ChromaDB upsert completed in %s batches of max %s documents",
+                (total + batch_size - 1) // batch_size,
+                batch_size,
+            )
 
     def query(
         self,
@@ -310,13 +358,13 @@ class VectorStore:
         emb_path = os.path.join(self.persist_dir,
                                 f"{self.collection_name}_embedder.pkl")
         self.embedder.save(emb_path)
-        logger.debug(f"[VectorDB] Store guardado: {store_path}")
+        print(f"[VectorDB] Store guardado: {store_path}")
 
     def load(self) -> None:
         """Carga el vector store desde disco."""
         store_path = os.path.join(self.persist_dir, f"{self.collection_name}.json")
         if not os.path.exists(store_path):
-            logger.debug("[VectorDB] No existe store previo. Comenzando vacío.")
+            print("[VectorDB] No existe store previo. Comenzando vacío.")
             return
 
         with open(store_path, "r", encoding="utf-8") as f:
@@ -332,7 +380,7 @@ class VectorStore:
         if os.path.exists(emb_path):
             self.embedder.load(emb_path)
 
-        logger.debug(f"[VectorDB] Store cargado: {self.count()} documentos.")
+        print(f"[VectorDB] Store cargado: {self.count()} documentos.")
 
     # ------------------------------------------------------------------
     # Utilidades
