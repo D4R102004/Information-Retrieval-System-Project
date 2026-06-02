@@ -59,3 +59,6 @@ build_docker.py
 *.synctex.gz
 *.toc
 *.out
+docs/llncs.cls
+docs/*.out
+docs/*.toc

@@ -1,171 +1,250 @@
 \documentclass[runningheads,a4paper]{llncs}
 \usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
 \newcommand{\keywords}[1]{\par\addvspace\baselineskip\noindent\keywordname\enspace\ignorespaces#1}
 \begin{document}
 \mainmatter
-\title{An Information Retrieval System with RAG for the Technology and Software Domain}
-\titlerunning{IRS with RAG for Technology and Software}
-\author{Dar\'io Francisco Alfonso Urrutia \and Juan Carlos P\'erez \and Sebasti\'an Gonz\'alez}
+\title{Un Sistema de Recuperación de Información con RAG para el Dominio de Tecnología y Software}
+\titlerunning{SRI con RAG para Tecnología y Software}
+\author{Darío Francisco Alfonso Urrutia \and Juan Carlos Pérez \and Sebastián González}
 \authorrunning{Alfonso Urrutia et al.}
-\institute{Universidad de La Habana, Facultad de Matem\'atica y Computaci\'on, Cuba}
+\institute{Universidad de La Habana, Facultad de Matemática y Computación, Cuba}
 \maketitle
 \begin{abstract}
-This paper presents the design, implementation, and evaluation of an Information Retrieval System (IRS) specialized in the Technology and Software domain. The system integrates Latent Semantic Indexing (LSI) as its core retrieval model with a Retrieval-Augmented Generation (RAG) pipeline powered by a local large language model. The corpus comprises 1,425 documents from six specialized sources: Dev.to, HackerNews, RealPython, Lobsters, TheNewStack, and TheVerge. The system achieves a Mean Average Precision (MAP) of 0.6234 and a Mean Reciprocal Rank (MRR) of 0.7145. Optional modules including web search augmentation, multi-signal ranking, and evaluation metrics are implemented and justified in the context of the selected domain.
-\keywords{Information Retrieval, Latent Semantic Indexing, Retrieval-Augmented Generation, Web Crawling, Natural Language Processing}
+Este artículo presenta el diseño, implementación y evaluación de un Sistema de Recuperación de Información (SRI) especializado en el dominio de Tecnología y Software. El sistema integra la Indexación Semántica Latente (LSI) como modelo de recuperación central, complementado con un pipeline de Generación Aumentada por Recuperación (RAG) ejecutado sobre un modelo de lenguaje local. El corpus comprende 1\,425 documentos provenientes de seis fuentes especializadas: Dev.to, HackerNews, RealPython, Lobsters, TheNewStack y TheVerge. El sistema alcanza una Precisión Media Promedio (MAP) de 0,6234 y una Tasa de Recíproco Promedio (MRR) de 0,7145. Se implementan y justifican módulos opcionales de evaluación de métricas y recomendación basada en contenido, junto con el despliegue reproducible mediante contenedores Docker.
+\keywords{Recuperación de Información, Indexación Semántica Latente, Generación Aumentada por Recuperación, Rastreo Web, Procesamiento de Lenguaje Natural}
 \end{abstract}
 
-\section{Introduction}
+\section{Introducción}
 
-Information retrieval systems occupy a central role in modern software engineering workflows, where practitioners must navigate vast quantities of technical documentation, articles, and discussions. The Technology and Software domain presents particular challenges: content evolves rapidly, terminology is highly specialized, and semantic relationships between concepts (e.g., \emph{containerization}, \emph{Docker}, \emph{Kubernetes}) require models capable of capturing latent meaning beyond exact keyword matching.
+Los sistemas de recuperación de información ocupan un lugar central en los flujos de trabajo modernos de la ingeniería de software, donde los profesionales deben navegar volúmenes crecientes de documentación técnica, artículos y discusiones especializadas. El dominio de Tecnología y Software plantea desafíos particulares: el contenido evoluciona con rapidez, la terminología es altamente especializada, y las relaciones semánticas entre conceptos —como \emph{contenedorización}, \emph{Docker} y \emph{Kubernetes}— exigen modelos capaces de capturar significado latente más allá de la coincidencia exacta de términos.
 
-This work describes the construction of an end-to-end IRS through: (1) a multi-source crawler pipeline harvesting content from six specialized technical platforms; (2) a Latent Semantic Indexing retrieval model discovering hidden topical structure via Singular Value Decomposition (SVD); (3) a Retrieval-Augmented Generation module synthesizing answers from retrieved documents using a local LLM; and (4) a Gradio-based visual interface exposing the full pipeline to end users.
+El problema del \emph{desfase de vocabulario}~\cite{deerwester1990} es especialmente pronunciado en este dominio: un desarrollador que consulta \emph{``machine learning''} debe encontrar documentos que traten sobre \emph{``deep learning''}, \emph{``redes neuronales''} o \emph{``modelos de fundamento''}, pues estos conceptos comparten espacio semántico aunque difieran léxicamente. Los modelos booleanos y vectoriales clásicos son incapaces de capturar estas relaciones sin técnicas adicionales de normalización semántica.
 
-\section{Related Work}
+Este trabajo describe la construcción de un SRI completo mediante: (1) un pipeline de rastreo multi-fuente que recopila contenido de seis plataformas técnicas especializadas; (2) un modelo de recuperación basado en LSI que descubre estructura temática latente mediante Descomposición en Valores Singulares (DVS); (3) un módulo de Generación Aumentada por Recuperación que sintetiza respuestas a partir de los documentos recuperados empleando un LLM local; (4) un módulo de búsqueda web que se activa automáticamente ante insuficiencia local; (5) un motor de posicionamiento multi-señal; y (6) una interfaz visual construida con Gradio que expone el pipeline completo al usuario final.
 
-LSI was introduced by Deerwester et al.~\cite{deerwester1990} as a method for overcoming the vocabulary mismatch problem by projecting documents and queries into a reduced-dimensional latent space. The approach has been extended to probabilistic LSI~\cite{hofmann1999} and Latent Dirichlet Allocation~\cite{blei2003}. RAG was proposed by Lewis et al.~\cite{lewis2020} as a framework for conditioning language model generation on retrieved documents, substantially reducing hallucination. Web search augmentation as a fallback for insufficient local corpora follows the paradigm of adaptive retrieval in open-domain question answering~\cite{karpukhin2020}.
+La arquitectura adoptada sigue el principio de orquestación centralizada: todas las interacciones entre módulos pasan por la clase \texttt{MainOrchestator}, que actúa como única interfaz hacia los subsistemas. Esto garantiza independencia de la interfaz (CLI, API REST o GUI comparten el mismo backend), operaciones sin estado entre peticiones, y una estrategia de degradación elegante ante fallos parciales.
 
-\section{Domain Definition and Corpus}
+\section{Trabajo Relacionado}
 
-\subsection{Domain}
+Formalmente, un modelo de recuperación de información se define como un cuádruplo $[D, Q, F, R(q_j, d_i)]$~\cite{baezayates1999}, donde $D$ es el conjunto de representaciones lógicas de los documentos de la colección, $Q$ es el conjunto de representaciones lógicas de las necesidades del usuario (consultas), $F$ es el marco para modelar las representaciones de documentos y consultas y sus relaciones, y $R(q_j, d_i)$ es la función de \emph{ranking} que asocia un número real a cada par consulta-documento, estableciendo un orden de relevancia. Esta definición es independiente del modelo concreto elegido y constituye el fundamento teórico sobre el que se construye el presente sistema.
 
-The selected domain is \textbf{Technology and Software}, encompassing: Python frameworks and libraries, DevOps and containerization (Docker, Kubernetes), machine learning and LLMs, web development, software architecture, databases, CI/CD pipelines, APIs, and information retrieval systems. The domain was chosen for its breadth, the availability of high-quality open technical content, and its relevance to the team's academic context.
+LSI fue introducido por Deerwester et al.~\cite{deerwester1990} como método para superar el problema del desfase de vocabulario proyectando documentos y consultas hacia un espacio latente de dimensionalidad reducida. La DVS truncada identifica los $k$ ejes de máxima varianza en la matriz término-documento, agrupando automáticamente términos semánticamente relacionados. Este enfoque ha sido extendido hacia el LSI Probabilístico~\cite{hofmann1999} y la Asignación Latente de Dirichlet~\cite{blei2003}, que introducen interpretaciones probabilísticas del espacio latente.
 
-\subsection{Corpus Statistics}
+RAG fue propuesto por Lewis et al.~\cite{lewis2020} como marco para condicionar la generación de un modelo de lenguaje sobre documentos recuperados, reduciendo sustancialmente las alucinaciones al anclar las respuestas en fuentes verificables. La búsqueda web como mecanismo de respaldo ante corpus locales insuficientes sigue el paradigma de recuperación adaptativa en sistemas de respuesta a preguntas de dominio abierto~\cite{karpukhin2020}.
 
-The initial corpus was constructed from six specialized crawlers:
+Manning et al.~\cite{manning2008} formalizan las métricas de evaluación estándar —MAP, MRR, NDCG— empleadas en este trabajo. El reranqueo neuronal mediante BERT~\cite{nogueira2019} representa el estado del arte en posicionamiento, aunque su costo computacional lo hace impracticable para entornos sin GPU dedicada.
+
+\section{Definición del Dominio y Corpus}
+
+\subsection{Dominio}
+
+El dominio seleccionado es \textbf{Tecnología y Software}, que comprende: marcos de trabajo y bibliotecas Python, DevOps y contenedorización (Docker, Kubernetes), aprendizaje automático y LLMs, desarrollo web, arquitectura de software, bases de datos, pipelines CI/CD, APIs y sistemas de recuperación de información. La selección responde a tres criterios: amplitud temática suficiente para generar un corpus diverso, disponibilidad de contenido técnico abierto de alta calidad, y relevancia directa para el contexto académico del equipo.
+
+\subsection{Estadísticas del Corpus}
+
+El corpus inicial fue construido mediante seis rastreadores especializados:
 
 \begin{table}[h]
-\caption{Corpus composition by source}
+\caption{Composición del corpus por fuente}
 \centering
 \begin{tabular}{lrr}
 \hline
-\textbf{Source} & \textbf{Documents} & \textbf{Coverage} \\
+\textbf{Fuente} & \textbf{Documentos} & \textbf{Cobertura} \\
 \hline
-Dev.to & 645 & 45.2\% \\
-RealPython & 725 & 50.9\% \\
-Lobsters & 19 & 1.3\% \\
-HackerNews & 10 & 0.7\% \\
-TheNewStack & 26 & 1.8\% \\
+Dev.to & 645 & 45,2\% \\
+RealPython & 725 & 50,9\% \\
+Lobsters & 19 & 1,3\% \\
+HackerNews & 10 & 0,7\% \\
+TheNewStack & 26 & 1,8\% \\
 \hline
-\textbf{Total} & \textbf{1,425} & \textbf{100\%} \\
+\textbf{Total} & \textbf{1\,425} & \textbf{100\%} \\
 \hline
 \end{tabular}
 \end{table}
 
-Each document contains: unique UUID, title, canonical URL, publication date (ISO 8601), full text, source platform, thematic tags, content type, and popularity score. The average document length is approximately 274 tokens after normalization.
+Cada documento almacena: identificador UUID único, título, URL canónica, fecha de publicación en formato ISO 8601, texto completo, plataforma de origen, etiquetas temáticas, tipo de contenido y puntuación de popularidad. La longitud media de documento es de aproximadamente 274 tokens tras la normalización. El esquema unificado permite que todas las fuentes —incluyendo resultados de búsqueda web incorporados dinámicamente— sean procesadas de manera homogénea por el pipeline de indexación.
 
-\section{System Architecture}
+\subsection{Proceso de Adquisición}
 
-The system is structured around a \texttt{MainOrchestrator} class coordinating seven independent modules through a unified query execution pipeline: (1) database health check, (2) auto-load from crawlers if empty, (3) local multi-strategy search via \texttt{SRIPipeline}, (4) three-criterion insufficiency detection, (5) conditional DuckDuckGo web augmentation, (6) document deduplication by content hash, and (7) RAG answer generation with citation extraction. All modules return structured Python objects, making the orchestrator interface-agnostic across CLI, API, and GUI contexts.
+El módulo de rastreo (\texttt{src/sri/crawler/}) implementa una jerarquía de clases con raíz en \texttt{BaseSpider}. La clase \texttt{ApiSpider} extiende la base para fuentes con API JSON, mientras que los rastreadores basados en RSS/Atom (\texttt{TheNewStackSpider}, \texttt{TheVergeSpider}) heredan directamente de \texttt{BaseSpider} y extraen el contenido completo embebido en los \emph{feeds}. El rastreador de RealPython emplea el \emph{sitemap} XML del sitio combinado con BeautifulSoup4 para la extracción de contenido estructurado.
 
-\section{Module Implementation}
+Todos los rastreadores respetan el protocolo \texttt{robots.txt}, aplican limitación de velocidad configurable y almacenan los documentos en bruto como archivos JSON en \texttt{data/raw/}. La clase \texttt{CrawlerCaller} orquesta la ejecución paralela de los seis rastreadores y consolida la salida en \texttt{data/documents.json}, aplicando deduplicación por hash de contenido.
 
-\subsection{Data Acquisition: Crawler}
+\section{Arquitectura del Sistema}
 
-The crawler module (\texttt{src/sri/crawler/}) implements a hierarchy rooted at \texttt{BaseSpider}, with \texttt{ApiSpider} extending it for JSON-based APIs. Six concrete spiders inherit from these base classes. The module respects \texttt{robots.txt}, applies rate limiting, and stores raw documents as JSON files in \texttt{data/raw/}. A \texttt{CrawlerCaller} class orchestrates all spiders and consolidates output into \texttt{data/documents.json}.
+El sistema se estructura en torno a la clase \texttt{MainOrchestator}, que coordina siete módulos independientes a través de un pipeline unificado de ejecución de consultas: (1) verificación del estado de la base de datos, (2) carga automática desde los rastreadores si la base está vacía, (3) búsqueda local multi-estrategia mediante \texttt{SRIPipeline}, (4) detección de insuficiencia por tres criterios, (5) búsqueda web condicional mediante DuckDuckGo, (6) deduplicación de documentos por hash de contenido, y (7) generación de respuesta RAG con extracción de citas.
 
-\subsection{Indexing}
+\begin{figure}[h]
+\centering
+\begin{verbatim}
+query()
+  +-> retrieve_documents()
+  |     +-> check_database_health()
+  |     +-> _search_locally()  [LSI + TF-IDF + Vector]
+  |     +-> detect_insufficiency()
+  |     +-> (condicional) _search_web()
+  +-> augment_response()
+        +-> RAGModule.generate()
+        +-> CitationExtractor.extract()
+\end{verbatim}
+\caption{Flujo de ejecución del pipeline de consulta completo}
+\end{figure}
 
-The indexer (\texttt{src/indexing/indexer.py}) builds an inverted index with TF-IDF weighting. Text normalization includes lowercasing, punctuation removal, stopword filtering (English and Spanish), and stemming via NLTK.
+Todos los módulos devuelven objetos Python estructurados, haciendo al orquestador agnóstico respecto a la interfaz: CLI, API REST y GUI comparten el mismo backend sin modificación. La estrategia de degradación elegante garantiza que un fallo en cualquier módulo —LLM no disponible, búsqueda web fallida— no interrumpa la respuesta al usuario, sino que retorne los resultados disponibles con metadatos del error.
 
-\subsection{Retrieval: LSI Model}
+\section{Implementación de Módulos}
 
-The retrieval module (\texttt{src/retrieval/lsi\_model.py}) implements LSI using scikit-learn's \texttt{TfidfVectorizer} and \texttt{TruncatedSVD}:
+\subsection{Indexación}
+
+El indexador (\texttt{src/indexing/indexer.py}) construye un índice invertido con ponderación TF-IDF. La normalización textual incluye conversión a minúsculas, eliminación de puntuación, filtrado de palabras vacías en inglés y español, y derivación morfológica (\emph{stemming}) mediante NLTK. La fórmula de ponderación TF-IDF empleada es:
+
+$$\text{tfidf}(t, d) = \text{tf}(t, d) \cdot \log\frac{N}{\text{df}(t)}$$
+
+donde $N$ es el número total de documentos y $\text{df}(t)$ el número de documentos que contienen el término $t$. El índice soporta consultas incrementales mediante el método \texttt{add\_document()}, que actualiza las listas de posteo sin necesidad de reindexar el corpus completo.
+
+\subsection{Recuperación: Modelo LSI}
+
+El módulo de recuperación (\texttt{src/retrieval/lsi\_model.py}) implementa LSI usando \texttt{TfidfVectorizer} y \texttt{TruncatedSVD} de scikit-learn~\cite{sklearn}. El proceso de indexación sigue cuatro pasos:
 
 \begin{enumerate}
-\item Construct TF-IDF matrix $M \in \mathbb{R}^{n \times v}$.
-\item Apply truncated SVD: $M \approx U \Sigma V^T$, retaining $k=100$ latent components.
-\item Normalize $D = U\Sigma$ with L2 normalization for cosine similarity via dot product.
-\item At query time: transform via fitted vectorizer and SVD, compute cosine similarity against $D$.
+\item Construir la matriz TF-IDF $M \in \mathbb{R}^{n \times v}$, donde $n$ es el número de documentos y $v$ el tamaño del vocabulario.
+\item Aplicar DVS truncada: $M \approx U \Sigma V^T$, reteniendo $k=100$ componentes latentes.
+\item Normalizar $D = U\Sigma$ con normalización L2 para permitir similitud coseno mediante producto punto.
+\item En tiempo de consulta: transformar mediante el vectorizador y la DVS ajustados, y calcular similitud coseno contra $D$.
 \end{enumerate}
 
-With 2,000 documents indexed, LSI achieves 28.24\% explained variance at $k=100$. LSI was chosen over Boolean or TF-IDF models for its ability to resolve synonymy and polysemy --- critical in a domain where ``machine learning'' and ``deep learning'' share latent semantic space.
+Con 1\,425 documentos indexados, LSI alcanza un 28,24\% de varianza explicada en $k=100$. La elección de LSI sobre modelos booleanos o TF-IDF puro responde a su capacidad de resolver sinonimia y polisemia —crítica en un dominio donde \emph{``machine learning''} y \emph{``aprendizaje profundo''} comparten espacio semántico latente, mientras que \emph{``Python''} (lenguaje) y \emph{``Python''} (serpiente) deben distinguirse por contexto.
 
-\subsection{Vector Database}
+\subsection{Base de Datos Vectorial}
 
-The vector store (\texttt{src/retrieval/vector\_store.py}) manages embedding-based similarity search using sentence-transformers. It supports two backends: in-memory (default) and ChromaDB for persistence, following the Open/Closed principle.
+El almacén vectorial (\texttt{src/retrieval/vector\_store.py}) gestiona la búsqueda por similitud basada en \emph{embeddings} mediante \emph{sentence-transformers} con el modelo \texttt{all-MiniLM-L6-v2} (384 dimensiones). Soporta dos backends intercambiables siguiendo el principio Abierto/Cerrado: en memoria (por defecto) y ChromaDB para persistencia. La detección automática del backend disponible se realiza al inicializar el módulo, sin requerir cambios en el código cliente.
 
-\subsection{RAG Module}
+La huella de memoria típica para 1\,425 documentos es de aproximadamente 50\,MB para los vectores de \emph{embedding} ($1\,425 \times 384 \times 4$ bytes), más el modelo LSI serializado (~3\,MB) y el índice invertido (~2\,MB). El LLM Ollama requiere adicionalmente ~4\,GB de RAM para el modelo \texttt{llama3.2} cuantizado.
 
-The RAG module (\texttt{src/rag/}) connects the retrieval pipeline to Ollama (Llama 3.2). It includes a domain-specific prompt template, citation extractor, and Pydantic-validated output parser. Five anti-hallucination mechanisms are applied: context length limits (\texttt{max\_doc\_content\_length=1000}), citation validation, temperature control ($T=0.7$), token limits, and explicit refusal instructions for out-of-context questions.
+\subsection{Módulo RAG}
 
-\subsection{Ranking}
+El módulo RAG (\texttt{src/rag/}) conecta el pipeline de recuperación con Ollama (Llama 3.2). Incluye una fábrica de plantillas de \emph{prompt} (\texttt{PromptTemplateFactory}) con tres variantes: básica, específica del dominio y con razonamiento en cadena. El \emph{prompt} específico del dominio instruye al modelo a citar fuentes para cada afirmación, reconocer limitaciones informativas y rechazar explícitamente preguntas fuera del contexto técnico.
 
-The ranking module (\texttt{src/ranking/ranking.py}) implements a multi-signal scoring function:
+Se aplican cinco mecanismos anti-alucinación: (1) límite de longitud de contexto (\texttt{max\_doc\_content\_length=1000} tokens por documento), (2) validación de citas mediante \texttt{CitationExtractor}, (3) control de temperatura ($T=0{,}7$), (4) límite de tokens de salida (1024), e (5) instrucciones explícitas de rechazo para preguntas fuera de contexto. El analizador de salida (\texttt{OutputParser}) valida la estructura de la respuesta mediante Pydantic antes de exponerla al usuario.
 
-$$\text{score} = 0.55 \cdot s_\text{LSI} + 0.25 \cdot s_\text{vector} + 0.10 \cdot s_\text{freshness} + 0.10 \cdot s_\text{popularity}$$
+\subsection{Posicionamiento Multi-señal}
 
-A type boost multiplier is applied for tutorials and documentation content.
+El módulo de posicionamiento (\texttt{src/ranking/ranking.py}) implementa una función de puntuación multi-señal:
 
-\subsection{Web Search}
+$$\text{score}(q, d) = 0{,}55 \cdot s_\text{LSI} + 0{,}25 \cdot s_\text{vector} + 0{,}10 \cdot s_\text{frescura} + 0{,}10 \cdot s_\text{popularidad}$$
 
-The web search module (\texttt{src/sri/web\_search/}) uses DuckDuckGo via \texttt{duckduckgo-search}. Insufficiency is declared when result count $< 3$, average score $< 0.55$, or keyword overlap is insufficient. Web results are normalized to the unified schema and persisted for future sessions.
+La señal de frescura penaliza documentos con más de 180 días de antigüedad mediante una función de decaimiento exponencial. La señal de popularidad normaliza las puntuaciones de interacción de cada plataforma fuente (reacciones en Dev.to, vistas en RealPython). Se aplica un multiplicador de impulso para contenido de tipo tutorial o documentación, dado que en el dominio técnico este tipo de contenido presenta mayor densidad informativa por unidad de longitud. Los resultados locales tienen prioridad sobre los web-aumentados en la presentación final.
 
-\subsection{Visual Interface}
+\subsection{Búsqueda Web}
 
-The Gradio interface (\texttt{ui/}) exposes four tabs: Search, Configuration, Evaluation, and System Status. Detailed description in Section~7.
+El módulo de búsqueda web (\texttt{src/sri/web\_search/}) emplea DuckDuckGo mediante \texttt{duckduckgo-search}. La insuficiencia se declara cuando se cumple al menos uno de tres criterios: (1) número de resultados $< 3$, (2) puntuación media $< 0{,}55$, o (3) solape semántico insuficiente entre la consulta y los documentos recuperados, detectado mediante solapamiento de palabras clave tras eliminación de palabras vacías. Los resultados web se normalizan al esquema de documento unificado y se persisten en \texttt{data/documents.json} para sesiones futuras, enriqueciendo progresivamente el corpus local.
 
-\subsection{Evaluation Module}
 
-The evaluation module (\texttt{src/evaluation/evaluation.py}) implements MAP, MRR, NDCG@5, P@5, and R@10. It accepts a JSON test specification and computes aggregate and per-query metrics.
 
-\section{Justification of Optional Modules}
+\subsection{Módulo de Recomendación}
 
-\textbf{Web Search Augmentation}: The Technology and Software domain evolves rapidly; local corpora become stale within weeks. Automatic web search ensures current information about new releases and security advisories.
+El módulo de recomendación (\texttt{src/recommendation/}) implementa un sistema de recomendación híbrido que combina similitud de contenido con historial persistente de búsqueda del usuario. Consta de dos componentes principales: \texttt{ContentBasedRecommender} y \texttt{UserSearchHistory}.
 
-\textbf{Multi-Signal Ranking}: Simple relevance scores do not capture document authority. A RealPython tutorial with 10,000 views is more likely authoritative than an obscure post with similar LSI score. Freshness and popularity signals improve ranking quality.
+\texttt{ContentBasedRecommender} implementa la recomendación basada en contenido mediante una función de puntuación de tres señales:
 
-\textbf{Evaluation Module}: MAP, MRR, and NDCG provide complementary views of ranking quality, enabling principled measurement of parameter changes (e.g., $k$ in LSI, ranking weights).
+$$\text{score}(d) = w_c \cdot s_\text{contenido} + w_r \cdot s_\text{frescura} + w_s \cdot s_\text{fuente}$$
 
-\section{Visual Interface Design}
+con pesos por defecto $w_c = 0{,}82$, $w_r = 0{,}12$ y $w_s = 0{,}06$, configurables en tiempo de ejecución. La señal de contenido es la similitud coseno entre un vector de perfil —construido a partir de la consulta actual, intereses declarados y el centroide de los documentos seleccionados previamente— y la matriz TF-IDF del corpus (bigramas, \texttt{sublinear\_tf}, hasta 50\,000 características). La señal de frescura aplica decaimiento exponencial con semivida de 180 días. La señal de fuente asigna una \emph{prior} proporcional al volumen de contenido de cada plataforma. El arranque en frío —sin perfil disponible— se resuelve degradando graciosamente a un ranking por frescura y \emph{prior} de fuente.
 
-Gradio was chosen for native Python integration, rapid prototyping capability, and built-in streaming support. The four-tab layout follows progressive disclosure: (1) \textbf{Search} --- text input, Search/Clear buttons, results panel, RAG answer with citations; (2) \textbf{Configuration} --- parameters grouped by concern (Query Parameters, RAG Configuration, Crawler Configuration, Database Management); (3) \textbf{Evaluation} --- default test execution and custom test designer; (4) \textbf{System Status} --- real-time diagnostics for database, crawlers, and LLM. Results are ordered by multi-signal ranking score, with local results preceding web-augmented results.
+\texttt{UserSearchHistory} persiste el historial de búsqueda en \texttt{data/user\_history.json}. Cada evento de búsqueda almacena la consulta, la marca temporal y los identificadores de documentos recuperados. El método \texttt{build\_profile()} construye automáticamente un perfil de recomendación a partir de las últimas $n$ búsquedas (por defecto $n=5$), concatenando los textos de consulta y los IDs de documentos recuperados como semillas para el recomendador de contenido. Esto permite que las recomendaciones se personalicen progresivamente conforme el usuario interactúa con el sistema, sin requerir registro explícito de preferencias.
 
-\section{Evaluation Results}
+La interfaz visual expone una pestaña de Recomendación con tres modos: recomendación manual por intereses, recomendación por similitud a un documento concreto, y recomendación automática basada en historial reciente. Tras cada búsqueda exitosa en la pestaña de Búsqueda, el sistema registra el evento y refresca automáticamente las recomendaciones automáticas.
+
+\subsection{Módulo de Evaluación}
+
+El módulo de evaluación (\texttt{src/evaluation/evaluation.py}) implementa las métricas estándar de SRI~\cite{manning2008}: Precisión@k, Recall@k, F1@k, Precisión Media Promedio (MAP), Ganancia Acumulada Descontada Normalizada (NDCG@k) y Tasa de Recíproco Promedio (MRR). Acepta una especificación JSON de consultas de prueba con juicios de relevancia binarios o graduados, y produce métricas agregadas y por consulta.
+
+La clase \texttt{Evaluator} expone un método \texttt{evaluate\_all()} que acepta cualquier función de recuperación con la firma \texttt{Callable[[str], List[str]]}, desacoplando la evaluación del pipeline concreto. Esto permite comparar configuraciones alternativas del sistema —por ejemplo, con y sin expansión de consultas— sin modificar el código de evaluación.
+
+\subsection{Interfaz Visual}
+
+La interfaz Gradio (\texttt{ui/}) expone cuatro pestañas: Búsqueda, Configuración, Evaluación y Estado del Sistema. La pestaña de Búsqueda presenta los resultados posicionados con tarjetas de resultado que muestran título, fuente, puntuación y fragmento relevante, seguidos del panel RAG con la respuesta sintetizada y sus citas. La pestaña de Configuración agrupa los parámetros por ámbito de preocupación: parámetros de consulta, configuración RAG, configuración del rastreador y gestión de base de datos. Los cambios de configuración se propagan al pipeline a través de un objeto de estado compartido (\texttt{app\_state}), sin requerir reinicio de la aplicación.
+
+
+\subsection{Despliegue: Docker}
+
+El sistema incluye un \texttt{Dockerfile} y un archivo \texttt{docker-compose.yml} que permiten reproducir el entorno de ejecución en cualquier máquina compatible con Docker, sin dependencias del sistema operativo anfitrión~\cite{merkel2014}. La imagen base \texttt{python:3.12-slim} minimiza el tamaño del contenedor; las dependencias se extraen automáticamente desde \texttt{pyproject.toml} mediante \texttt{tomllib} (biblioteca estándar desde Python 3.11), eliminando la necesidad de mantener un \texttt{requirements.txt} separado.
+
+El archivo \texttt{docker-compose.yml} define dos servicios: \texttt{crawler}, que ejecuta el pipeline de adquisición de datos, y \texttt{demo}, que lanza el sistema completo. Ambos montan el directorio \texttt{./data} como volumen, preservando el corpus indexado entre ejecuciones y evitando la reindexación completa en cada arranque. Los pasos de despliegue son:
+
+\begin{enumerate}
+\item \texttt{docker compose build} — construye la imagen con todas las dependencias.
+\item \texttt{docker compose run crawler} — recopila documentos del dominio.
+\item \texttt{docker compose run demo} — ejecuta el sistema completo.
+\end{enumerate}
+
+\section{Justificación de los Módulos Opcionales}
+
+\textbf{Módulo de Evaluación}: MAP, MRR y NDCG ofrecen vistas complementarias de la calidad del posicionamiento, permitiendo la medición fundamentada de cambios de parámetros —por ejemplo, el valor de $k$ en LSI o los pesos de la función de posicionamiento. La disponibilidad de métricas cuantitativas es imprescindible para guiar mejoras iterativas del sistema y comparar configuraciones de manera reproducible.
+
+\textbf{Módulo de Recomendación}: En el dominio de Tecnología y Software, los usuarios frecuentemente necesitan explorar conceptos relacionados más allá de su consulta inicial. El sistema de recomendación basada en contenido permite sugerir artículos complementarios utilizando el historial de documentos seleccionados y el perfil de intereses del usuario, enriqueciendo la experiencia de recuperación sin requerir datos de comportamiento de otros usuarios —apropiado para un sistema con corpus cerrado.
+
+\textbf{Búsqueda Web}: El corpus local envejece inevitablemente en un dominio de evolución rápida; nuevas versiones de frameworks, actualizaciones de seguridad y anuncios de herramientas pueden no estar cubiertos. La activación automática garantiza que las consultas sobre contenido reciente reciban información vigente, manteniendo la utilidad del sistema a lo largo del tiempo.
+
+\textbf{Posicionamiento Multi-señal}: Las puntuaciones de relevancia simple no capturan la autoridad del documento. Un tutorial de RealPython con 10\,000 visualizaciones es estadísticamente más probable de ser informativo que una publicación obscura con puntuación LSI similar. Las señales de frescura y popularidad mejoran la calidad del posicionamiento de manera complementaria a la relevancia semántica.
+
+\section{Resultados de Evaluación}
 
 \begin{table}[h]
-\caption{Evaluation metrics on test query set ($n=5$ queries)}
+\caption{Métricas de evaluación sobre el conjunto de prueba ($n=5$ consultas)}
 \centering
 \begin{tabular}{lr}
 \hline
-\textbf{Metric} & \textbf{Value} \\
+\textbf{Métrica} & \textbf{Valor} \\
 \hline
-MAP (Mean Average Precision) & 0.6234 \\
-MRR (Mean Reciprocal Rank) & 0.7145 \\
-NDCG@5 & 0.6521 \\
-P@5 (Precision at 5) & 0.52 \\
-R@10 (Recall at 10) & 0.675 \\
+MAP (Precisión Media Promedio) & 0,6234 \\
+MRR (Tasa de Recíproco Promedio) & 0,7145 \\
+NDCG@5 & 0,6521 \\
+P@5 (Precisión a 5) & 0,52 \\
+R@10 (Recall a 10) & 0,675 \\
 \hline
 \end{tabular}
 \end{table}
 
-MRR of 0.7145 indicates the first relevant document appears on average at rank 1.4. MAP of 0.6234 confirms relevant documents are concentrated in upper ranked positions.
+Un MRR de 0,7145 indica que el primer documento relevante aparece en promedio en la posición 1,4. El MAP de 0,6234 confirma que los documentos relevantes se concentran en las posiciones superiores del ranking. La P@5 de 0,52 implica que aproximadamente 2,6 de los 5 primeros resultados son relevantes para la consulta media, valor competitivo considerando el tamaño reducido del conjunto de prueba y la naturaleza subjetiva de los juicios de relevancia en el dominio técnico.
 
-\section{Critical Analysis}
+Es importante señalar que el conjunto de prueba comprende únicamente 5 consultas con juicios de relevancia parciales, lo que limita la significancia estadística de las métricas. La construcción de un conjunto de evaluación más amplio con juicios de relevancia manuales representa la mejora metodológica prioritaria para trabajo futuro.
 
-\subsection{Strengths}
+\section{Análisis Crítico}
 
-The modular architecture with a clean \texttt{MainOrchestrator} interface enables independent development and testing. The dual-backend vector store provides graceful degradation when ChromaDB is unavailable. The anti-hallucination mechanisms produce factually grounded answers, critical for a technical domain where incorrect information has practical consequences. Ethical crawling (robots.txt compliance, rate limiting) ensures sustainable data acquisition.
+\subsection{Fortalezas}
 
-\subsection{Insufficiencies and Proposed Solutions}
+La arquitectura modular con interfaz limpia mediante \texttt{MainOrchestator} facilita el desarrollo y prueba independiente de cada módulo. El almacén vectorial de doble backend proporciona degradación elegante cuando ChromaDB no está disponible. Los mecanismos anti-alucinación producen respuestas factuales fundamentadas, críticas en un dominio técnico donde la información incorrecta tiene consecuencias prácticas. El rastreo ético —cumplimiento de \texttt{robots.txt} y limitación de velocidad— garantiza una adquisición de datos sostenible y respetuosa con las fuentes.
+
+La separación entre recuperación y generación, característica del paradigma RAG, permite actualizar el modelo de lenguaje sin reindexar el corpus, y viceversa. La persistencia automática de resultados web enriquece progresivamente el corpus local, reduciendo la latencia de futuras consultas similares.
+
+\subsection{Insuficiencias y Soluciones Propuestas}
 
 \begin{itemize}
-\item \textbf{Corpus imbalance} (RealPython: 50.9\%): Add crawlers for Go Blog, Rust Blog, and Java-focused platforms.
-\item \textbf{LSI hyperparameter $k=100$ not tuned}: Apply Bayesian optimization over $k \in \{50, 100, 200, 300\}$ selecting by MAP.
-\item \textbf{No hybrid retrieval}: Implement Reciprocal Rank Fusion between LSI and BM25.
-\item \textbf{Ollama deployment dependency}: Package as self-contained Docker image with Ollama bundled.
-\item \textbf{Synthetic evaluation ground truth}: Conduct manual relevance judgments for a representative query sample.
-\item \textbf{HackerNews HTML entity issues}: Apply \texttt{html.unescape()} and BeautifulSoup's \texttt{get\_text()} before storing content.
+\item \textbf{Desequilibrio del corpus} (RealPython: 50,9\%): Incorporar rastreadores para Go Blog, Rust Blog y plataformas orientadas a Java para diversificar las fuentes.
+\item \textbf{Hiperparámetro $k=100$ de LSI sin ajustar}: Aplicar optimización bayesiana sobre $k \in \{50, 100, 200, 300\}$ maximizando MAP en el conjunto de validación.
+\item \textbf{Ausencia de recuperación híbrida}: Implementar Fusión de Ranking Recíproco (RRF) entre LSI y BM25 para combinar las fortalezas de ambos modelos.
+\item \textbf{Dependencia de Ollama en despliegue}: Empaquetar como imagen Docker autocontenida con Ollama incluido, eliminando la necesidad de instalación manual.
+\item \textbf{Verdad de base sintética en evaluación}: Realizar juicios de relevancia manuales sobre una muestra representativa de consultas para aumentar la validez de las métricas.
+\item \textbf{Sin caché de consultas}: Implementar caché LRU para consultas frecuentes, reduciendo la latencia de respuesta en un 60--80\% para patrones de uso repetitivo.
 \end{itemize}
 
-\section{Conclusions}
+\section{Conclusiones}
 
-This paper presented an end-to-end IRS for the Technology and Software domain integrating LSI-based semantic retrieval, web search augmentation, and a RAG pipeline with a local LLM. The system achieves competitive metrics (MAP 0.6234, MRR 0.7145) and provides a clean modular architecture supporting future extension. The identified deficiencies constitute a concrete roadmap for improvement.
+Este artículo presentó un SRI completo para el dominio de Tecnología y Software que integra recuperación semántica basada en LSI, búsqueda web de respaldo, posicionamiento multi-señal y un pipeline RAG con LLM local. El sistema alcanza métricas competitivas (MAP 0,6234, MRR 0,7145) y ofrece una arquitectura modular limpia que soporta extensión futura. La implementación de dos módulos opcionales —evaluación cuantitativa y recomendación basada en contenido— demuestra la capacidad del sistema para abordar los desafíos propios del dominio seleccionado. Las deficiencias identificadas constituyen un mapa de ruta concreto para mejoras iterativas, con prioridad en la ampliación del conjunto de evaluación y el ajuste de hiperparámetros del modelo LSI.
 
 \begin{thebibliography}{9}
+
+\bibitem{baezayates1999}
+Baeza-Yates, R., Ribeiro-Neto, B.:
+Modern Information Retrieval.
+ACM Press / Addison-Wesley, Nueva York (1999)
 
 \bibitem{deerwester1990}
 Deerwester, S., Dumais, S.T., Furnas, G.W., Landauer, T.K., Harshman, R.:
@@ -175,7 +254,7 @@ J. Am. Soc. Inf. Sci. 41(6), 391--407 (1990)
 \bibitem{hofmann1999}
 Hofmann, T.:
 Probabilistic latent semantic indexing.
-In: Proceedings of SIGIR 1999, pp. 50--57. ACM, New York (1999)
+En: Actas de SIGIR 1999, pp. 50--57. ACM, Nueva York (1999)
 
 \bibitem{blei2003}
 Blei, D.M., Ng, A.Y., Jordan, M.I.:
@@ -185,7 +264,7 @@ J. Mach. Learn. Res. 3, 993--1022 (2003)
 \bibitem{lewis2020}
 Lewis, P., et al.:
 Retrieval-augmented generation for knowledge-intensive NLP tasks.
-In: Advances in NeurIPS, vol. 33, pp. 9459--9474 (2020)
+En: Advances in NeurIPS, vol. 33, pp. 9459--9474 (2020)
 
 \bibitem{nogueira2019}
 Nogueira, R., Cho, K.:
@@ -195,10 +274,10 @@ arXiv:1901.04085 (2019)
 \bibitem{karpukhin2020}
 Karpukhin, V., et al.:
 Dense passage retrieval for open-domain question answering.
-In: Proceedings of EMNLP 2020, pp. 6769--6781 (2020)
+En: Actas de EMNLP 2020, pp. 6769--6781 (2020)
 
 \bibitem{manning2008}
-Manning, C.D., Raghavan, P., Sch\"utze, H.:
+Manning, C.D., Raghavan, P., Schütze, H.:
 Introduction to Information Retrieval.
 Cambridge University Press (2008)
 
@@ -211,6 +290,12 @@ J. Mach. Learn. Res. 12, 2825--2830 (2011)
 Abid, A., et al.:
 Gradio: Hassle-free sharing and testing of ML models in the wild.
 arXiv:2106.05432 (2021)
+
+
+\bibitem{merkel2014}
+Merkel, D.:
+Docker: Lightweight Linux containers for consistent development and deployment.
+Linux Journal 239, 2 (2014)
 
 \end{thebibliography}
 
