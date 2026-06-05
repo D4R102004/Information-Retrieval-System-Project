@@ -42,7 +42,7 @@ def _render_placeholder_results(state: UIState) -> tuple[str, str, str, str]:
     )
     status_panel = format_search_status(
         {
-            "minimum_documents": DEFAULT_MIN_DOCUMENTS,
+            "minimum_documents": state.settings.get("min_documents", DEFAULT_MIN_DOCUMENTS),
             "local_documents": 0,
             "web_documents": 0,
             "insufficiency_reasons": [],
@@ -124,7 +124,7 @@ def create_app() -> gr.Blocks:
                             format_progress_panel(progress_events),
                             error_message,
                             session_state,
-                            gr.update(),
+                            "",
                         )
                         return
 
@@ -162,7 +162,7 @@ def create_app() -> gr.Blocks:
                                 session_state.last_query,
                             ),
                             session_state,
-                            gr.update(),
+                            "",
                         )
 
                     documents_raw = retrieval_result.get("documents", [])
@@ -196,7 +196,7 @@ def create_app() -> gr.Blocks:
                             format_progress_panel(progress_events),
                             status_text,
                             session_state,
-                            gr.update(),
+                            "",
                         )
                         return
 
@@ -228,7 +228,7 @@ def create_app() -> gr.Blocks:
                         format_progress_panel(progress_events),
                         status_text,
                         session_state,
-                        gr.update(),
+                        "",
                     )
 
                     rag_response = orchestrator_service.augment_response(

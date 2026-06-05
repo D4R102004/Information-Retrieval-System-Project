@@ -21,6 +21,85 @@
         "93ad3055-5f5f-4861-87d3-a3e58084c1e1",
         "88100c3b-4edb-485e-ab28-ede4fbe5d82a"
       ]
+    },
+    {
+      "query": "docker",
+      "timestamp": "2026-06-05T22:00:56.286319+00:00",
+      "retrieved_doc_ids": [
+        "9453c64a-571d-4cfe-b66b-689e1f15431b",
+        "93b30bf3-ea9c-4bb2-92d4-a0f6ce3502cd",
+        "43d134eb-3164-4988-b442-59b26d49e36a",
+        "eb238e9d-93e1-4e8b-bd2a-d3d01cee48eb"
+      ]
+    },
+    {
+      "query": "C# vs Python",
+      "timestamp": "2026-06-05T22:22:28.999273+00:00",
+      "retrieved_doc_ids": [
+        "84067e0a-bdb3-4864-bc1e-6a747def6dae",
+        "717eab79-2cf8-4a26-82ca-95c5247fe1c2",
+        "308b76f2-e4d1-4b6d-9f20-955062acc30b",
+        "7dc60454-bb9d-4546-a3be-965181a42cac",
+        "077817d8-5fdb-45c3-8883-ae5ce7e1151f",
+        "0b7fcddb-9d48-4811-9374-980799bde9ac",
+        "0a8da067-586f-41fb-86f9-5e289d60e581",
+        "28f23cda-a69c-40fc-8cbf-bfb1b86ff156",
+        "6485b1a7-3c9b-42f7-9b83-7a947c31cac6",
+        "fbe5dbfd-2496-4036-be24-e28ca60b02e2"
+      ]
+    },
+    {
+      "query": "C# vs Python",
+      "timestamp": "2026-06-05T22:24:24.013630+00:00",
+      "retrieved_doc_ids": [
+        "212812d8-b981-4ad8-98e2-47d8ce6c1999",
+        "4fa836e3-7239-4cb3-8bdc-7dce9728fa24",
+        "1daf01a6-478b-483c-98c6-581ccf40772e",
+        "b17207c7-a5b4-46ef-b25c-45c702851444",
+        "1bce96fb-a01e-4bf5-92c5-e35b7cd06844",
+        "6981a68c-f022-4cad-b087-6d2b4af0e046",
+        "84067e0a-bdb3-4864-bc1e-6a747def6dae",
+        "717eab79-2cf8-4a26-82ca-95c5247fe1c2",
+        "308b76f2-e4d1-4b6d-9f20-955062acc30b",
+        "7dc60454-bb9d-4546-a3be-965181a42cac",
+        "077817d8-5fdb-45c3-8883-ae5ce7e1151f"
+      ]
+    },
+    {
+      "query": "C3 vs Python",
+      "timestamp": "2026-06-05T22:53:27.924544+00:00",
+      "retrieved_doc_ids": [
+        "99e6b1ab-633b-4760-ac6a-93aa6b6fc5f2",
+        "c5e63832-3d7b-48cd-8ccd-0e44af756de9",
+        "de551f04-bcd7-48ff-8174-98462f3cc072",
+        "75c23115-d5e1-4af5-a004-bdca5a2d29b3",
+        "7f4ab350-2b71-4c36-a285-618c4084b2b5",
+        "a7267f9e-6414-44be-a53e-9ceaec888f49",
+        "20e0b761-8340-4dee-8ff1-92f271d2931b",
+        "84067e0a-bdb3-4864-bc1e-6a747def6dae",
+        "717eab79-2cf8-4a26-82ca-95c5247fe1c2",
+        "308b76f2-e4d1-4b6d-9f20-955062acc30b",
+        "7dc60454-bb9d-4546-a3be-965181a42cac",
+        "077817d8-5fdb-45c3-8883-ae5ce7e1151f"
+      ]
+    },
+    {
+      "query": "C# vs Python",
+      "timestamp": "2026-06-05T23:11:33.970814+00:00",
+      "retrieved_doc_ids": [
+        "a5d97468-0096-47e7-9adb-fbc8ce64f37c",
+        "06d4fe49-4a0c-4024-82ad-935ea5b50768",
+        "ce1cd23d-a1c7-43d4-89a0-0395b77c4e49",
+        "daf40d55-6bc4-4036-8313-1b300092c2e1",
+        "09f1fa57-a2a5-4cb6-8fe3-853f130e4414",
+        "230a9575-22cc-400e-862b-9722313ac981",
+        "012ddc48-0a91-4ec9-9fbb-bd96271ed673",
+        "84067e0a-bdb3-4864-bc1e-6a747def6dae",
+        "717eab79-2cf8-4a26-82ca-95c5247fe1c2",
+        "308b76f2-e4d1-4b6d-9f20-955062acc30b",
+        "7dc60454-bb9d-4546-a3be-965181a42cac",
+        "077817d8-5fdb-45c3-8883-ae5ce7e1151f"
+      ]
     }
   ]
 }

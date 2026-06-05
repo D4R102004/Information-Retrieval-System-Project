@@ -19,15 +19,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 from sri.pipeline import SRIPipeline
 
 try:
     from sri.crawler.caller import CrawlerCaller, clean_scraped_text
-except ImportError:  # Crawler deps are optional for recommendation/search-only flows.
+except ImportError as e:  # Crawler deps are optional for recommendation/search-only flows.
     CrawlerCaller = None  # type: ignore[assignment]
 
     def clean_scraped_text(value: str) -> str:
         return value
+    
+    logger.error(("[ERROR] " + str(e)))
 
 
 from main_config import main_config
@@ -38,12 +42,12 @@ from sri.web_search.checker import SufficiencyChecker
 
 try:
     from sri.web_search.searcher import WebSearcher
-except ModuleNotFoundError:
+except ModuleNotFoundError as e:
     WebSearcher = None  # type: ignore[assignment]
+    logger.error(("[ERROR] " + str(e)))
+
 from recommendation.recommender import ContentBasedRecommender
 from recommendation.user_history import UserSearchHistory
-
-logger = logging.getLogger(__name__)
 
 
 class MainOrchestator:
@@ -220,25 +224,28 @@ class MainOrchestator:
 
             if not documents:
                 # Execute crawlers only when we have no consolidated file
-                crawl_result = self._require_crawler_caller().execute_full_pipeline(
-                    force_recrawl=force_recrawl,
-                    max_articles=max_articles_per_spider,
-                    use_initial_corpus=use_initial_corpus,
-                )
+                try:
+                    crawl_result = self._require_crawler_caller().execute_full_pipeline(
+                        force_recrawl=force_recrawl,
+                        max_articles=max_articles_per_spider,
+                        use_initial_corpus=use_initial_corpus,
+                    )
 
-                status = (
-                    crawl_result.get("status")
-                    if isinstance(crawl_result, dict)
-                    else None
-                )
-                if status not in ("success", "skipped"):
-                    return {
-                        "success": False,
-                        "message": f"Crawler execution failed: {crawl_result}",
-                        "total_documents": 0,
-                        "indexed_documents": 0,
-                        "duration_seconds": time.time() - start_time,
-                    }
+                    status = (
+                        crawl_result.get("status")
+                        if isinstance(crawl_result, dict)
+                        else None
+                    )
+                    if status not in ("success", "skipped"):
+                        return {
+                            "success": False,
+                            "message": f"Crawler execution failed: {crawl_result}",
+                            "total_documents": 0,
+                            "indexed_documents": 0,
+                            "duration_seconds": time.time() - start_time,
+                        }
+                except Exception as e:
+                    logger.error("[ERROR]" + str(e))
 
                 documents = self._require_crawler_caller().consolidate_raw_to_documents(
                     use_initial_corpus=use_initial_corpus

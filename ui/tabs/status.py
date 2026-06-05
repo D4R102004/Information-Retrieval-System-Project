@@ -126,7 +126,7 @@ def build_status_tab() -> None:
                 crawler_html += f"""
                 <div style="padding: 12px; margin: 8px 0; border-radius: 4px; border-left: 3px solid #3B82F6;">
                     <div><strong>{crawler}</strong></div>
-                    <div style="font-size: 0.9em; opacity: 0.8;">Last used: {last_crawled or "N/A"} | Documents: {doc_count or "N/A"}</div>
+                    <div style="font-size: 0.9em; opacity: 0.8;">Last used: {last_crawled or "Never"} | Documents: {doc_count or "0"}</div>
                 </div>
                 """
             crawler_html += "</div>"
