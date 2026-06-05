@@ -13,6 +13,7 @@ from .config import (
     DEFAULT_USE_INITIAL_CORPUS,
     DEFAULT_MIN_DOCUMENTS,
     DEFAULT_OLLAMA_MODEL,
+    DEFAULT_OLLAMA_TIMEOUT,
     DEFAULT_RAG_TEMPLATE,
     DEFAULT_OLLAMA_BASE_URL,
     DEFAULT_RAG_TEMPERATURE,
@@ -44,6 +45,7 @@ class UIState:
             # LLM
             "ollama_model": DEFAULT_OLLAMA_MODEL,
             "ollama_base_url": DEFAULT_OLLAMA_BASE_URL,
+            "ollama_timeout": DEFAULT_OLLAMA_TIMEOUT,
             "rag_template": DEFAULT_RAG_TEMPLATE,
             "rag_temperature": DEFAULT_RAG_TEMPERATURE,
             "rag_max_tokens": DEFAULT_RAG_MAX_TOKENS,
@@ -87,6 +89,7 @@ class UIState:
             "llm": {
                 "ollama_model": self.settings["ollama_model"],
                 "ollama_base_url": self.settings["ollama_base_url"],
+                "ollama_timeout": self.settings["ollama_timeout"],
                 "rag_temperature": self.settings["rag_temperature"],
                 "rag_max_tokens": self.settings["rag_max_tokens"],
                 "max_cites": self.settings["max_cites"],

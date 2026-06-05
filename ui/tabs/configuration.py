@@ -14,8 +14,7 @@ from ..config import (
     DEFAULT_MAX_WEB_RESULTS,
     DEFAULT_USE_INITIAL_CORPUS,
     DEFAULT_MIN_DOCUMENTS,
-    DEFAULT_QUERY_MIN_LENGTH,
-    DEFAULT_QUERY_MAX_LENGTH,
+    DEFAULT_OLLAMA_TIMEOUT,
     DEFAULT_OLLAMA_MODEL,
     DEFAULT_RAG_TEMPLATE,
     DEFAULT_OLLAMA_BASE_URL,
@@ -139,6 +138,15 @@ def build_configuration_tab(app_state: gr.State) -> None:
                     info="Full URL including protocol and port",
                     interactive=True,
                 )
+                ollama_timeout = gr.Slider(
+                    minimum=10,
+                    maximum=1800,
+                    value=DEFAULT_OLLAMA_TIMEOUT,
+                    step=30,
+                    label="RAG Timeout",
+                    info="Await RAG generator response time in seconds",
+                    interactive=True,
+                )
                 rag_temperature = gr.Slider(
                     minimum=0.0,
                     maximum=1.0,
@@ -224,6 +232,7 @@ def build_configuration_tab(app_state: gr.State) -> None:
             def save_rag_settings(
                 ollama_model: str,
                 ollama_url: str,
+                ollama_timeout: str,
                 rag_template_title: str,
                 rag_temperature: int,
                 rag_max_tokens: int,
@@ -231,9 +240,12 @@ def build_configuration_tab(app_state: gr.State) -> None:
                 max_context_doc_length: int,
                 session_state: UIState,
             ) -> tuple[str, UIState]:
-                """Persist query settings into session state for use by backend."""
+                """Persist query settings into ssettings["max_cites"] = max_cites
+                session_state.settings["max_context_doc_length"] = max_context_doc_length
+                orchestrator_ession state for use by backend."""
                 session_state.settings["ollama_model"] = ollama_model
                 session_state.settings["ollama_base_url"] = ollama_url
+                session_state.settings["ollama_timeout"] = ollama_timeout
                 session_state.settings["rag_template"] = _to_snake_case(rag_template_title)
                 session_state.settings["rag_temperature"] = rag_temperature
                 session_state.settings["rag_max_tokens"] = rag_max_tokens
@@ -244,8 +256,8 @@ def build_configuration_tab(app_state: gr.State) -> None:
                 status = (
                     f"[OK] Settings saved — \n"
                     f"Model={ollama_model}, URL={ollama_url}, \n"
-                    f"Template={rag_template_title}, \n"
-                    f"Temperature={rag_temperature}, MaxTokens={rag_max_tokens}, \n"
+                    f"Template={rag_template_title}, Timeout={ollama_timeout},\n"
+                    f"Temperature={rag_temperature}, MaxTokens={rag_max_tokens},\n"
                     f"MaxCites={max_cites}, MaxContextDocLength={max_context_doc_length}"
                 )
                 return status, session_state
@@ -255,6 +267,7 @@ def build_configuration_tab(app_state: gr.State) -> None:
                 inputs=[
                     ollama_model,
                     ollama_url,
+                    ollama_timeout,
                     rag_template,
                     rag_temperature,
                     rag_max_tokens,
