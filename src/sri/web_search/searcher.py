@@ -15,6 +15,8 @@ try:
 except ModuleNotFoundError:
     from duckduckgo_search import DDGS
 
+import logging
+logger = logging.getLogger(__name__)
 
 class WebSearcher:
     """Search the web and return normalized article data."""
@@ -40,14 +42,17 @@ class WebSearcher:
         """
         results: list[dict] = []
         with DDGS() as ddgs:
-            raw_results = ddgs.text(
-                query,
-                max_results=self.max_results,
-            )
-            for raw in raw_results:
-                article = self._build_article(raw)
-                if article:
-                    results.append(article)
+            try:
+                raw_results = ddgs.text(
+                    query,
+                    max_results=self.max_results,
+                )
+                for raw in raw_results:
+                    article = self._build_article(raw)
+                    if article:
+                        results.append(article)
+            except Exception as e:
+                logger.error("[ERROR] " + str(e))
         return results
 
     def _fetch_full(self, url: str) -> str:

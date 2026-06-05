@@ -240,9 +240,7 @@ def build_configuration_tab(app_state: gr.State) -> None:
                 max_context_doc_length: int,
                 session_state: UIState,
             ) -> tuple[str, UIState]:
-                """Persist query settings into ssettings["max_cites"] = max_cites
-                session_state.settings["max_context_doc_length"] = max_context_doc_length
-                orchestrator_ession state for use by backend."""
+                """Persist query settings into session state for use by backend."""
                 session_state.settings["ollama_model"] = ollama_model
                 session_state.settings["ollama_base_url"] = ollama_url
                 session_state.settings["ollama_timeout"] = ollama_timeout
