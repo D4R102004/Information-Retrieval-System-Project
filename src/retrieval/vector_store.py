@@ -21,6 +21,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import logging
 
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Intentamos importar ChromaDB; si no está, usamos backend propio
@@ -29,10 +30,9 @@ try:
     import chromadb
     from chromadb.utils import embedding_functions
     _CHROMA_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    logger.error("[ERROR] " + str(e))
     _CHROMA_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
 
 
 # ChromaDB can reject very large upsert/add calls.

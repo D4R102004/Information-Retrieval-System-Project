@@ -100,6 +100,38 @@
         "7dc60454-bb9d-4546-a3be-965181a42cac",
         "077817d8-5fdb-45c3-8883-ae5ce7e1151f"
       ]
+    },
+    {
+      "query": "C# vs Python",
+      "timestamp": "2026-06-05T23:29:14.774975+00:00",
+      "retrieved_doc_ids": [
+        "d65f885c-e8c0-43ab-b057-2d506efeafa0",
+        "0926e6f9-a4ee-4d29-9c6c-d4696ccc73c5",
+        "4337c4db-4b5e-43ed-8997-317d7e6a2e85",
+        "41e1c943-3807-40e9-816a-c35fe80fd9e2",
+        "adf44bea-1c0a-4d5a-979e-e121d44ed77e",
+        "84067e0a-bdb3-4864-bc1e-6a747def6dae",
+        "717eab79-2cf8-4a26-82ca-95c5247fe1c2",
+        "308b76f2-e4d1-4b6d-9f20-955062acc30b",
+        "7dc60454-bb9d-4546-a3be-965181a42cac",
+        "077817d8-5fdb-45c3-8883-ae5ce7e1151f"
+      ]
+    },
+    {
+      "query": "Java vs Python",
+      "timestamp": "2026-06-05T23:32:20.053720+00:00",
+      "retrieved_doc_ids": [
+        "d5cb1b08-508e-4a77-8608-faf2f13eb380",
+        "89556b15-362b-4827-844e-8c5c7883a714",
+        "85f94872-a7e7-4b97-9b82-947bd49693be",
+        "6d9c2c41-8f0b-4b61-bc81-dd791138d7be",
+        "2806110e-6817-4587-8d75-a38796d476af",
+        "819df271-ef52-4b83-9a04-996634af697d",
+        "1ce297c9-31c2-4d1a-82ac-63d490221ff8",
+        "2e70891c-3f1b-4db3-971d-414b98e67f53",
+        "2f65cfa1-629f-4154-9095-ddce6c4adf5c",
+        "97d12c44-42f5-4107-a160-fccc3f91ba30"
+      ]
     }
   ]
 }

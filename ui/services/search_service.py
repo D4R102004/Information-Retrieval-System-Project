@@ -175,7 +175,6 @@ def format_rag_response(response: RAGResponse) -> str:
 
     for citation_id, index in sorted(citation_map, key=lambda item: len(item[0]), reverse=True):
         shown_answer = re.sub(rf"\[{re.escape(citation_id)}\]", f"[{index}]", shown_answer)
-    
 
     # Remove code blocks to avoid identifying lists as false citations
     no_code_answer = re.sub(CODE_BLOCK_PATTERN, "", shown_answer)
@@ -183,8 +182,7 @@ def format_rag_response(response: RAGResponse) -> str:
     # Build a set of current ids mapped to indices
     mapped_ids = {idx for _, idx in citation_map}
 
-    # RAG will never receive 10^5 doc ids, so this is a safe heuristic to avoid showing 
-    # false citations that are actually part of the answer text.
+    # using (log(len(mapped_ids)) + 1) to estimate the maximum number of digits a cite can have
     unremoved_citations = [f"[{cite}]" 
                            for cite in re.findall(CITATION_PATTERN, no_code_answer) 
                            if len(cite) > (log(len(mapped_ids)) + 1) and cite not in mapped_ids
@@ -192,6 +190,10 @@ def format_rag_response(response: RAGResponse) -> str:
 
     for unremoved in unremoved_citations:
         shown_answer = shown_answer.replace(unremoved, "")
+
+    # Remove any untreated ID from shown answer
+    for doc_id, _ in citation_map:
+        shown_answer = shown_answer.replace(doc_id, "")
     
     # lines.append("#### Final answer")
     lines.append(shown_answer)
@@ -201,6 +203,7 @@ def format_rag_response(response: RAGResponse) -> str:
         lines.append("### Citations")
 
         for index, citation in enumerate(citations, 1):
+            citation_id = getattr(citation, 'doc_id', None) or getattr(citation, 'id', None)
             title = citation.title or "Untitled"
             url = citation.url or ""
             snippet = citation.snippet or ""
@@ -211,6 +214,8 @@ def format_rag_response(response: RAGResponse) -> str:
                 lines.append(f"   - URL: {url}")
             if date:
                 lines.append(f"   - Date: {date}")
+            if citation_id:
+                lines.append(f"   - Local ID: {citation_id} (intended for manual recommendations)")
             if snippet:
                 lines.append(f"   - Snippet: {snippet}")
             

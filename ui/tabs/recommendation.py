@@ -52,7 +52,7 @@ def _format_recommendations(result: dict[str, Any]) -> str:
     for index, doc in enumerate(recommendations, start=1):
         title = doc.get("title") or "Untitled document"
         url = doc.get("url") or ""
-        doc_id = doc.get("id") or ""
+        doc_id = doc.get("id") or doc.get("doc_id") or ""
         source = doc.get("source") or "unknown"
         tags = doc.get("tags") or ""
         score = doc.get("recommendation_score", 0)
@@ -65,12 +65,12 @@ def _format_recommendations(result: dict[str, Any]) -> str:
         lines.extend(
             [
                 f"#### {index}. {rendered_title}",
-                f"`{doc_id}`",
+                f"**Local ID**: `{doc_id}`  (intended for manual recommendations)",
                 f"**Source:** {source}  ",
-                f"**Score:** {score} | **Similarity:** {sim} | **Recency:** {recency}",
-                f"**Tags:** {tags}" if tags else "**Tags:** —",
-                f"**Why:** {explanation}",
-                f"> {snippet[:450]}" if snippet else "",
+                f"**Score:** {score} | **Similarity:** {sim} | **Recency:** {recency} ",
+                f"**Tags:** {tags}" if tags else "**Tags:** — ",
+                f"**Why:** {explanation} ",
+                f"> {snippet[:450]} " if snippet else "",
                 "---",
             ]
         )
