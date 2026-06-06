@@ -173,7 +173,7 @@ class TestOutputParserParsing:
 
     def test_extract_citations_returns_enriched_citations(self):
         """Should return enriched Citation objects directly from extract_citations."""
-        text = "Python is great [doc_001] and ML is useful [id_2]."
+        text = "Python is great [doc_001] and ML is useful [doc_002]."
         documents = [
             {
                 "id": "doc_001",
@@ -320,7 +320,7 @@ class TestOutputParserParsing:
 
         answer, citations = CitationExtractor.extract_citations(text, documents)
 
-        assert answer == text
+        assert answer == "First [alpha], second [beta], third [gamma]."
         assert [c.doc_id for c in citations] == ["alpha", "beta", "gamma"]
 
 

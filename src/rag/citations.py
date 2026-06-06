@@ -88,7 +88,8 @@ class CitationExtractor:
         if replacements:
             def _replace_match(match: re.Match[str]) -> str:
                 citation_id = match.group(1)
-                return f"[{replacements.get(citation_id, "")}]"
+                mapped_id = replacements.get(citation_id)
+                return f"[{mapped_id}]" if mapped_id else ""
 
             answer = re.sub(CitationExtractor.CITATION_PATTERN, _replace_match, answer)
 
