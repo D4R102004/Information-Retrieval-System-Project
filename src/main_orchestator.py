@@ -25,13 +25,15 @@ from sri.pipeline import SRIPipeline
 
 try:
     from sri.crawler.caller import CrawlerCaller, clean_scraped_text
-except ImportError as e:  # Crawler deps are optional for recommendation/search-only flows.
+except (
+    ImportError
+) as e:  # Crawler deps are optional for recommendation/search-only flows.
     CrawlerCaller = None  # type: ignore[assignment]
 
     def clean_scraped_text(value: str) -> str:
         return value
-    
-    logger.error(("[ERROR] " + str(e)))
+
+    logger.error("[ERROR] " + str(e))
 
 
 from main_config import main_config
@@ -44,7 +46,7 @@ try:
     from sri.web_search.searcher import WebSearcher
 except ModuleNotFoundError as e:
     WebSearcher = None  # type: ignore[assignment]
-    logger.error(("[ERROR] " + str(e)))
+    logger.error("[ERROR] " + str(e))
 
 from recommendation.recommender import ContentBasedRecommender
 from recommendation.user_history import UserSearchHistory
@@ -1488,10 +1490,12 @@ class MainOrchestator:
                     if doc_id:
                         doc_ids.append(str(doc_id))
 
-                print("\n[EVALUATION DEBUG]")
-                print("Query:", query_text)
-                print("Retrieved IDs:", doc_ids)
-                print("Retrieved titles:", [doc.get("title", "") for doc in results])
+                logger.debug("\n[EVALUATION DEBUG]")
+                logger.debug("Query: %s", query_text)
+                logger.debug("Retrieved IDs: %s", doc_ids)
+                logger.debug(
+                    "Retrieved titles: %s", [doc.get("title", "") for doc in results]
+                )
 
                 return doc_ids
 
