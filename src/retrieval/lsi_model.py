@@ -10,18 +10,17 @@ Referencia bibliográfica:
   Information Science, 41(6), 391–407. https://doi.org/10.1002/(SICI)1097-4571
 """
 
-import os
-import json
-import pickle
-import numpy as np
-from typing import List, Dict, Tuple, Optional
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
-from sklearn.preprocessing import normalize
-from scipy.spatial.distance import cosine
-
-
 import logging
+import os
+import pickle
+
+import numpy as np
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import normalize
+
+from rag.config import rag_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -44,17 +43,17 @@ class LSIModel:
         """
         self.n_components = n_components
         self.language = language
-        self.vectorizer: Optional[TfidfVectorizer] = None
-        self.svd: Optional[TruncatedSVD] = None
-        self.doc_matrix: Optional[np.ndarray] = None   # (n_docs, k)
-        self.documents: List[Dict] = []
+        self.vectorizer: TfidfVectorizer | None = None
+        self.svd: TruncatedSVD | None = None
+        self.doc_matrix: np.ndarray | None = None  # (n_docs, k)
+        self.documents: list[dict] = []
         self.is_fitted = False
 
     # ------------------------------------------------------------------
     # Entrenamiento / indexación
     # ------------------------------------------------------------------
 
-    def fit(self, documents: List[Dict]) -> None:
+    def fit(self, documents: list[dict]) -> None:
         """
         Construye el índice LSI a partir de una lista de documentos.
 
@@ -79,18 +78,19 @@ class LSIModel:
         tfidf_matrix = self.vectorizer.fit_transform(corpus)  # (n_docs, vocab)
 
         # Paso 2: SVD truncado — espacio semántico latente
-        k = min(self.n_components, tfidf_matrix.shape[0] - 1,
-                tfidf_matrix.shape[1] - 1)
+        k = min(self.n_components, tfidf_matrix.shape[0] - 1, tfidf_matrix.shape[1] - 1)
         self.svd = TruncatedSVD(n_components=k, random_state=42)
-        doc_latent = self.svd.fit_transform(tfidf_matrix)    # (n_docs, k)
+        doc_latent = self.svd.fit_transform(tfidf_matrix)  # (n_docs, k)
 
         # Normalización L2 (facilita similitud coseno vía producto punto)
         self.doc_matrix = normalize(doc_latent, norm="l2")
         self.is_fitted = True
 
         explained = self.svd.explained_variance_ratio_.sum()
-        logger.debug(f"[LSI] Índice construido: {len(documents)} docs, "
-              f"k={k}, varianza explicada={explained:.2%}")
+        logger.debug(
+            f"[LSI] Índice construido: {len(documents)} docs, "
+            f"k={k}, varianza explicada={explained:.2%}"
+        )
 
     # ------------------------------------------------------------------
     # Recuperación
@@ -101,7 +101,7 @@ class LSIModel:
         query_text: str,
         top_k: int = 10,
         threshold: float = 0.0,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
         Recupera los documentos más relevantes para una consulta.
 
@@ -118,16 +118,15 @@ class LSIModel:
             raise RuntimeError("El modelo no ha sido entrenado. Llame a fit() primero.")
 
         # Proyectar consulta al espacio latente
-        q_tfidf = self.vectorizer.transform([query_text])      # (1, vocab)
-        q_latent = self.svd.transform(q_tfidf)                # (1, k)
-        q_norm = normalize(q_latent, norm="l2")               # (1, k)
+        q_tfidf = self.vectorizer.transform([query_text])  # (1, vocab)
+        q_latent = self.svd.transform(q_tfidf)  # (1, k)
+        q_norm = normalize(q_latent, norm="l2")  # (1, k)
 
         # Similitud coseno con todos los documentos
-        scores = self.doc_matrix @ q_norm.T                   # (n_docs, 1)
+        scores = self.doc_matrix @ q_norm.T  # (n_docs, 1)
         scores = scores.ravel()
 
         # Rankear
-        from ranking.ranking import rag_config
         ranked_indices = np.argsort(scores)[::-1]
         results = []
         for idx in ranked_indices[:top_k]:
@@ -135,14 +134,18 @@ class LSIModel:
             if sim < threshold:
                 break
             doc = self.documents[idx]
-            results.append({
-                "doc_id": doc.get("id", str(idx)),
-                "title":  doc.get("title", "Sin título"),
-                "score":  round(sim, 4),
-                "content": self._snippet(doc.get("content", ""), rag_config.max_context_doc_length),
-                "url":    doc.get("url", ""),
-                "tags":   doc.get("tags", []),
-            })
+            results.append(
+                {
+                    "doc_id": doc.get("id", str(idx)),
+                    "title": doc.get("title", "Sin título"),
+                    "score": round(sim, 4),
+                    "content": self._snippet(
+                        doc.get("content", ""), rag_config.max_context_doc_length
+                    ),
+                    "url": doc.get("url", ""),
+                    "tags": doc.get("tags", []),
+                }
+            )
         return results
 
     # ------------------------------------------------------------------
@@ -153,25 +156,28 @@ class LSIModel:
         """Guarda el modelo en disco."""
         os.makedirs(path, exist_ok=True)
         with open(os.path.join(path, "lsi_model.pkl"), "wb") as f:
-            pickle.dump({
-                "vectorizer":   self.vectorizer,
-                "svd":          self.svd,
-                "doc_matrix":   self.doc_matrix,
-                "documents":    self.documents,
-                "n_components": self.n_components,
-            }, f)
+            pickle.dump(
+                {
+                    "vectorizer": self.vectorizer,
+                    "svd": self.svd,
+                    "doc_matrix": self.doc_matrix,
+                    "documents": self.documents,
+                    "n_components": self.n_components,
+                },
+                f,
+            )
         logger.debug(f"[LSI] Modelo guardado en {path}")
 
     def load(self, path: str) -> None:
         """Carga el modelo desde disco."""
         with open(os.path.join(path, "lsi_model.pkl"), "rb") as f:
             data = pickle.load(f)
-        self.vectorizer   = data["vectorizer"]
-        self.svd          = data["svd"]
-        self.doc_matrix   = data["doc_matrix"]
-        self.documents    = data["documents"]
+        self.vectorizer = data["vectorizer"]
+        self.svd = data["svd"]
+        self.doc_matrix = data["doc_matrix"]
+        self.documents = data["documents"]
         self.n_components = data["n_components"]
-        self.is_fitted    = True
+        self.is_fitted = True
         logger.debug(f"[LSI] Modelo cargado: {len(self.documents)} documentos.")
 
     # ------------------------------------------------------------------
@@ -179,12 +185,12 @@ class LSIModel:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _get_text(doc: Dict) -> str:
+    def _get_text(doc: dict) -> str:
         """Concatena título + contenido para indexación."""
-        title   = doc.get("title", "") or ""
+        title = doc.get("title", "") or ""
         content = doc.get("content", "") or ""
-        tags    = " ".join(doc.get("tags", [])) if doc.get("tags") else ""
-        return f"{title} {title} {content} {tags}"   # doble título = mayor peso
+        tags = " ".join(doc.get("tags", [])) if doc.get("tags") else ""
+        return f"{title} {title} {content} {tags}"  # doble título = mayor peso
 
     @staticmethod
     def _snippet(text: str, length: int = 200) -> str:
