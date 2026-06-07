@@ -12,22 +12,22 @@ Responsibilities:
   4. Provide detailed reports on crawling progress and errors
 """
 
-import json, os
+import json
 import logging
+import os
 import re
 import time
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
+from sri.crawler.pipeline import JsonPipeline
 from sri.crawler.spiders.devto import DevToSpider
 from sri.crawler.spiders.hackernews import HackerNewsSpider
 from sri.crawler.spiders.lobsters import LobstersSpider
 from sri.crawler.spiders.realpython import RealPythonSpider
 from sri.crawler.spiders.thenewstack import TheNewStackSpider
 from sri.crawler.spiders.theverge import TheVergeSpider
-from sri.crawler.pipeline import JsonPipeline
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +37,16 @@ EMOJI_PATTERN = re.compile(
 )
 FRONTMATTER_PATTERN = re.compile(r"---\s*\n.*?\n---\s*\n", flags=re.DOTALL)
 METADATA_KEYS = {
-    "title:", "published:", "description:", "tags:", "canonical_url:",
-    "cover_image:", "slug:", "reading_time:", "author:", "date:",
+    "title:",
+    "published:",
+    "description:",
+    "tags:",
+    "canonical_url:",
+    "cover_image:",
+    "slug:",
+    "reading_time:",
+    "author:",
+    "date:",
 }
 
 
@@ -104,7 +112,7 @@ class CrawlerCaller:
         self,
         raw_dir: str = "data/raw",
         documents_output: str = "data/documents.json",
-        initial_corpus_dir: str = "data/initial-corpus"
+        initial_corpus_dir: str = "data/initial-corpus",
     ):
         """
         Initialize crawler coordinator.
@@ -118,7 +126,7 @@ class CrawlerCaller:
         self.documents_output = Path(documents_output)
         self.pipeline = JsonPipeline(output_directory=str(raw_dir))
 
-    def run_all_crawlers(self, max_articles: int = 500) -> Dict[str, Any]:
+    def run_all_crawlers(self, max_articles: int = 500) -> dict[str, Any]:
         """
         Execute all spiders and collect articles.
 
@@ -169,8 +177,11 @@ class CrawlerCaller:
                     logger.info(f"  {spider_name}: {count} articles saved")
 
                     # Save last crawled time
-                    path = os.path.join(self.raw_dir, spider_name.lower(), "_metadata.txt")
-                    with open(path, "a", encoding = "utf-8") as metadata:
+                    path = os.path.join(
+                        self.raw_dir, spider_name.lower(), "_metadata.txt"
+                    )
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    with open(path, "a", encoding="utf-8") as metadata:
                         metadata.write(f"{datetime.now().isoformat()} {count}")
 
                 except Exception as e:
@@ -193,7 +204,9 @@ class CrawlerCaller:
 
         return execution_report
 
-    def consolidate_raw_to_documents(self, use_initial_corpus: bool = True) -> List[Dict[str, Any]]:
+    def consolidate_raw_to_documents(
+        self, use_initial_corpus: bool = True
+    ) -> list[dict[str, Any]]:
         """
         Load and consolidate all raw JSON files into unified document list.
 
@@ -206,18 +219,30 @@ class CrawlerCaller:
         Returns:
             List of consolidated document dictionaries
         """
-        consolidated: Dict[str, Dict[str, Any]] = {}
+        consolidated: dict[str, dict[str, Any]] = {}
         source_dirs = []
 
-        logger.info(f"Consolidating raw documents from {self.raw_dir}{(" and from " + str(self.initial_corpus_dir) if use_initial_corpus else '')}...")
+        logger.info(
+            f"Consolidating raw documents from {self.raw_dir}{(" and from " + str(self.initial_corpus_dir) if use_initial_corpus else '')}..."
+        )
 
         # Include initial corpus if enabled and exists
-        if use_initial_corpus and self.initial_corpus_dir and self.initial_corpus_dir.is_dir():
+        if (
+            use_initial_corpus
+            and self.initial_corpus_dir
+            and self.initial_corpus_dir.is_dir()
+        ):
             source_dirs.append(self.initial_corpus_dir)
-        
+
         # Add all source directories from raw_dir
-        source_dirs.extend([source_dir for source_dir in self.raw_dir.glob("*/") if source_dir.is_dir()])
-        
+        source_dirs.extend(
+            [
+                source_dir
+                for source_dir in self.raw_dir.glob("*/")
+                if source_dir.is_dir()
+            ]
+        )
+
         # Iterate through source directories
         for source_dir in source_dirs:
             source_name = source_dir.name
@@ -227,7 +252,7 @@ class CrawlerCaller:
                 # Load each JSON file in source directory
                 for json_file in source_dir.glob("*.json"):
                     try:
-                        with open(json_file, "r", encoding="utf-8") as f:
+                        with open(json_file, encoding="utf-8") as f:
                             doc = json.load(f)
 
                         # Ensure required fields
@@ -262,9 +287,7 @@ class CrawlerCaller:
         logger.info(f"Total consolidated: {len(consolidated)} documents")
         return list(consolidated.values())
 
-    def save_consolidated_documents(
-        self, documents: List[Dict[str, Any]]
-    ) -> Path:
+    def save_consolidated_documents(self, documents: list[dict[str, Any]]) -> Path:
         """
         Save consolidated documents to documents.json.
 
@@ -282,7 +305,7 @@ class CrawlerCaller:
         logger.info(f"Saved {len(documents)} documents to {self.documents_output}")
         return self.documents_output
 
-    def clear_cached_documents(self) -> Dict[str, Any]:
+    def clear_cached_documents(self) -> dict[str, Any]:
         """
         Remove cached crawler artifacts and consolidated documents.
 
@@ -327,7 +350,7 @@ class CrawlerCaller:
             "deleted_directories": deleted_dirs,
         }
 
-    def load_consolidated_documents(self) -> List[Dict[str, Any]]:
+    def load_consolidated_documents(self) -> list[dict[str, Any]]:
         """
         Load documents from the consolidated documents.json file.
 
@@ -339,16 +362,14 @@ class CrawlerCaller:
             return []
 
         try:
-            with open(self.documents_output, "r", encoding="utf-8") as f:
+            with open(self.documents_output, encoding="utf-8") as f:
                 documents = json.load(f)
             return documents if isinstance(documents, list) else []
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             logger.warning(f"Failed to load consolidated documents: {e}")
             return []
 
-    def merge_documents(
-        self, new_documents: List[Dict[str, Any]]
-    ) -> Path:
+    def merge_documents(self, new_documents: list[dict[str, Any]]) -> Path:
         """
         Merge new documents into existing documents.json without overwriting.
 
@@ -368,12 +389,14 @@ class CrawlerCaller:
         existing = []
         if self.documents_output.exists():
             try:
-                with open(self.documents_output, "r", encoding="utf-8") as f:
+                with open(self.documents_output, encoding="utf-8") as f:
                     data = json.load(f)
                     existing = data if isinstance(data, list) else []
                 logger.info(f"Loaded {len(existing)} existing documents for merge")
-            except (json.JSONDecodeError, IOError) as e:
-                logger.warning(f"Failed to load existing documents: {e}. Starting fresh.")
+            except (OSError, json.JSONDecodeError) as e:
+                logger.warning(
+                    f"Failed to load existing documents: {e}. Starting fresh."
+                )
                 existing = []
 
         # Build dict by id for deduplication
@@ -410,7 +433,7 @@ class CrawlerCaller:
         """
         count = sum(1 for _ in self.raw_dir.glob(f"{folder}/*.json"))
         return count
-    
+
     def count_initial_corpus_documents(self) -> int:
         """
         Count documents in the initial corpus directory.
@@ -422,7 +445,7 @@ class CrawlerCaller:
             count = sum(1 for _ in self.initial_corpus_dir.glob("*.json"))
             return count
         return 0
-    
+
     def get_last_crawled(self, source: str) -> str:
         """
         Gets the date of the last crawl event for a given source.
@@ -433,13 +456,13 @@ class CrawlerCaller:
         Returns:
             str: date of last crawl event in ISO format.
         """
-        
+
         path = os.path.join(self.raw_dir, source, "_metadata.txt")
         try:
-            with open(path, "r", encoding="utf-8") as metadata:
+            with open(path, encoding="utf-8") as metadata:
                 last_entry = metadata.readlines()[-1].strip()
             return last_entry.split(" ")[0]
-        except (IOError, IndexError):
+        except (OSError, IndexError):
             logger.warning(f"Failed to read last crawl date for source: {source}")
             return ""
 
@@ -454,15 +477,18 @@ class CrawlerCaller:
             return 0
 
         try:
-            with open(self.documents_output, "r", encoding="utf-8") as f:
+            with open(self.documents_output, encoding="utf-8") as f:
                 docs = json.load(f)
             return len(docs) if isinstance(docs, list) else 0
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             return 0
 
     def execute_full_pipeline(
-        self, max_articles: int = 500, force_recrawl: bool = False, use_initial_corpus: bool = True
-    ) -> Dict[str, Any]:
+        self,
+        max_articles: int = 500,
+        force_recrawl: bool = False,
+        use_initial_corpus: bool = True,
+    ) -> dict[str, Any]:
         """
         Execute complete pipeline: crawl → consolidate → save.
 
@@ -509,7 +535,7 @@ class CrawlerCaller:
         return report
 
     @staticmethod
-    def _count_by_source(documents: List[Dict[str, Any]]) -> Dict[str, int]:
+    def _count_by_source(documents: list[dict[str, Any]]) -> dict[str, int]:
         """Count documents by source for reporting."""
         counts = {}
         for doc in documents:
